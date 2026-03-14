@@ -36,47 +36,47 @@
 }
 
 :root {
-  /* Warm cream / off-white */
-  --background: 42 30% 96%;
-  /* Dark charcoal */
-  --foreground: 20 10% 15%;
-  /* Deep forest green */
-  --primary: 142 40% 25%;
-  /* Cream white */
-  --primary-foreground: 42 30% 96%;
-  /* Slightly warm white */
-  --card: 42 20% 98%;
-  /* Warm light border */
-  --border: 42 15% 88%;
-  /* Warm light gray */
-  --muted: 42 15% 92%;
-  /* Medium warm gray for text */
-  --muted-foreground: 30 8% 40%;
-  /* Warm gold */
-  --accent: 42 80% 55%;
-  /* Charcoal for gold background */
-  --accent-foreground: 20 10% 15%;
-  
-  --secondary: 42 15% 92%;
-  
+  /* Brand: Cream #F5F5DC */
+  --background: 60 56% 91%;
+  /* Brand: Black #000000 */
+  --foreground: 0 0% 0%;
+  /* Brand: Black #000000 — primary buttons, headers */
+  --primary: 0 0% 0%;
+  /* Brand: Cream #F5F5DC — text on black buttons */
+  --primary-foreground: 60 56% 91%;
+  /* Card: slightly lighter cream */
+  --card: 60 40% 95%;
+  /* Border: warm neutral */
+  --border: 46 20% 82%;
+  /* Muted: softer cream */
+  --muted: 60 30% 88%;
+  /* Muted text: dark warm gray */
+  --muted-foreground: 0 0% 35%;
+  /* Brand: Bright Gold #FFD700 */
+  --accent: 51 100% 50%;
+  /* Black on gold */
+  --accent-foreground: 0 0% 0%;
+  /* Secondary: Metallic Gold #D4AF37 */
+  --secondary: 46 65% 52%;
+  --secondary-foreground: 0 0% 0%;
+
   --destructive: 0 70% 50%;
 }
 
 .dark {
-  /* Adapting to a darker upscale look if dark mode is forced, 
-     though the primary aesthetic requested is warm cream.
-     Keeping it aligned with the rich theme. */
-  --background: 20 10% 12%;
-  --foreground: 42 30% 96%;
-  --primary: 142 40% 30%;
-  --primary-foreground: 42 30% 96%;
-  --card: 20 10% 15%;
-  --border: 20 10% 20%;
-  --muted: 20 10% 20%;
-  --muted-foreground: 42 15% 70%;
-  --accent: 42 80% 50%;
-  --accent-foreground: 20 10% 12%;
-  --secondary: 20 10% 20%;
+  /* Dark mode: black base with gold accents */
+  --background: 0 0% 5%;
+  --foreground: 60 56% 91%;
+  --primary: 51 100% 50%;
+  --primary-foreground: 0 0% 0%;
+  --card: 0 0% 10%;
+  --border: 0 0% 18%;
+  --muted: 0 0% 15%;
+  --muted-foreground: 60 20% 65%;
+  --accent: 46 65% 52%;
+  --accent-foreground: 0 0% 0%;
+  --secondary: 0 0% 15%;
+  --secondary-foreground: 60 56% 91%;
 }
 
 @layer base {
