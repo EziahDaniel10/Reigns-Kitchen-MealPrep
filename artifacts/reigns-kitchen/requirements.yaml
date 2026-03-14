@@ -1,0 +1,14 @@
+packages:
+  "framer-motion": "Used for the mobile cart bottom sheet smooth slide-up animations and success modal transitions"
+  "zustand": "Simple, robust frontend-only state management for the bundle cart"
+  "clsx": "Utility for conditionally joining classNames"
+  "tailwind-merge": "Utility for merging tailwind classes without style conflicts"
+
+images:
+  - path: "artifacts/reigns-kitchen/public/images/hero-bg.png"
+    description: "Dark moody upscale restaurant background, deep forest green and warm gold accents, subtle elegant lighting, out of focus dining room table"
+    aspect_ratio: "16:9"
+
+notes:
+  - App is frontend-only as requested. Cart state is managed globally via Zustand.
+  - Using framer-motion for highly polished mobile-first interactions.

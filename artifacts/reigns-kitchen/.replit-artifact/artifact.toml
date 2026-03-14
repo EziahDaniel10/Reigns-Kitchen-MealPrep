@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Reigns Kitchen"
+version = "1.0.0"
+id = "artifacts/reigns-kitchen"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+localPort = 21745
+name = "web"
+paths = ["/"]
+
+[services.development]
+run = "pnpm --filter @workspace/reigns-kitchen run dev"
+
+[services.env]
+PORT = "21745"
+BASE_PATH = "/"
+
+[services.production]
+build = ["pnpm", "--filter", "@workspace/reigns-kitchen", "run", "build"]
+publicDir = "artifacts/reigns-kitchen/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"

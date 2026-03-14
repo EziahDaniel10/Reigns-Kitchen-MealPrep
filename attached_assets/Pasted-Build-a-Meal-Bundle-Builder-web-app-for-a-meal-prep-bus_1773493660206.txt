@@ -1,0 +1,141 @@
+Build a Meal Bundle Builder web app for a meal prep business. The app should be visually polished, mobile-friendly, and easy for customers to use.
+
+🏗️ ARCHITECTURE — CRITICAL
+The menu data must live in a single, clearly labeled configuration object/file at the top of the code (or in a dedicated menu.js / menuData constant) so the business owner can update it every month without touching any other part of the app. Label it clearly with a comment like // ✏️ UPDATE THIS MENU EACH MONTH. No menu content should be hardcoded anywhere else in the UI logic.
+
+📋 MENU DATA (load this as the initial data)
+jsconst MENU = [
+  {
+    category: "Chef Comfort Plates",
+    items: [
+      {
+        name: "Smothered Turkey Wings",
+        description: "Braised turkey wings in onion gravy.",
+        sides: "Braised kale • Maple glazed yams"
+      },
+      {
+        name: "Salmon Cakes",
+        description: "Pan-seared salmon cakes.",
+        sides: "Mac & cheese • Braised kale"
+      },
+      {
+        name: "Cajun Shrimp & Grits Bowl",
+        description: "Cajun sautéed shrimp over parmesan grits.",
+        sides: "Braised kale"
+      },
+      {
+        name: "Grilled Chicken Parmesan",
+        description: "Grilled chicken with marinara & mozzarella.",
+        sides: "Roasted vegetables"
+      },
+      {
+        name: "Jerk Chicken Lasagna Roll-Ups",
+        description: "Lasagna roll-ups with jerk chicken in creamy jerk sauce.",
+        sides: "Roasted vegetables"
+      }
+    ]
+  },
+  {
+    category: "Performance Fuel Meals",
+    items: [
+      {
+        name: "Peruvian Chicken Power Bowl",
+        description: "Peruvian roasted chicken with fried rice.",
+        sides: "Aji sauce • Seasonal vegetables"
+      },
+      {
+        name: "Cajun Salmon Recovery Bowl",
+        description: "Cajun seared salmon with cauliflower rice.",
+        sides: "Seasonal vegetables"
+      },
+      {
+        name: "Creole Chicken Power Bowl",
+        description: "Herb grilled chicken with jasmine rice.",
+        sides: "Roasted peppers"
+      }
+    ]
+  },
+  {
+    category: "Plant Powered",
+    items: [
+      {
+        name: "Vegan Lasagna Roll-Ups",
+        description: "Plant-based lasagna roll-ups with marinara.",
+        sides: "Roasted vegetables"
+      },
+      {
+        name: "Mushroom Steak Bowl",
+        description: "Balsamic roasted mushroom steak.",
+        sides: "Sweet potato mash • Seasonal vegetables"
+      }
+    ]
+  },
+  {
+    category: "Breakfast & Recovery",
+    items: [
+      {
+        name: "Suya Steak & Eggs",
+        description: "Suya spiced steak with scrambled eggs.",
+        sides: "Jollof potatoes"
+      },
+      {
+        name: "Mini Pancake Plate",
+        description: "Mini pancakes with scrambled eggs.",
+        sides: "Choice of turkey or chicken sausage"
+      },
+      {
+        name: "Greek Yogurt Fruit Parfait",
+        description: "Greek yogurt layered with fruit and granola.",
+        sides: ""
+      },
+      {
+        name: "Chia Power Parfait",
+        description: "Coconut chia pudding with berries.",
+        sides: ""
+      }
+    ]
+  },
+  {
+    category: "Family Meals",
+    familyNote: "Serves 3–4 people",
+    items: [
+      { name: "Smothered Turkey Wings Family Meal", description: "", sides: "" },
+      { name: "Jerk Chicken Lasagna Roll-Ups Family Pan", description: "", sides: "" },
+      { name: "Grilled Chicken Parmesan Family Meal", description: "", sides: "" },
+      { name: "Cajun Shrimp & Grits Family Meal", description: "", sides: "" }
+    ]
+  }
+]
+
+⚙️ FEATURES
+Bundle Builder:
+
+Customers browse all categories and tap/click "+ Add" on any meal to add it to their bundle
+Show a quantity counter per item (+ / −) so they can order multiples of the same meal
+A sticky cart/bundle sidebar or bottom sheet (mobile) updates live showing: selected items, quantities, and a subtotal (price per meal = $14.99 for individual, $49.99 for Family Meals — these prices should also be easy to update in the config)
+
+Bundle Summary:
+
+Display selected items with quantity and line total
+Show grand total
+A "Complete Order" or "Submit Bundle" button (can be a placeholder alert or link for now)
+
+UX Details:
+
+Filter/tab bar at the top to jump to each category
+Each meal card shows: name, description, sides, price, and an Add button
+Family Meals should display the "Serves 3–4" badge
+Empty bundle state should show a friendly prompt: "Start building your bundle!"
+
+
+🎨 DESIGN
+
+Warm, rich palette — think deep forest green, warm cream/off-white, and gold accents
+Clean card-based layout, generous spacing
+Bold serif or slab display font for the header/title; clean sans-serif for body
+Smooth transitions when adding items to the cart
+Fully responsive — mobile first
+
+
+🗂️ FILE STRUCTURE
+Keep it simple — a single index.html with embedded CSS and JS is fine, OR a clean React app. Either way, the MENU data config must be at the very top and clearly separated from the rest of the code.
