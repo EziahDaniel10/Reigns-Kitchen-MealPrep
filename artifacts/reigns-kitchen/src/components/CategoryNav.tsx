@@ -36,17 +36,17 @@ export function CategoryNav() {
   };
 
   return (
-    <div className="sticky top-16 z-40 bg-background border-b border-border shadow-sm">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex gap-1 overflow-x-auto no-scrollbar px-4 py-2 min-w-max">
+    <div className="sticky top-16 z-40 bg-background border-b border-border shadow-sm overflow-hidden">
+      <div className="overflow-x-auto no-scrollbar">
+        <div className="flex gap-1 px-4 py-2 w-max">
           {CONFIG.categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => scrollTo(cat.id)}
               className={cn(
                 "whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-colors cursor-pointer",
-                activeId === cat.id 
-                  ? "bg-primary text-primary-foreground" 
+                activeId === cat.id
+                  ? "bg-primary text-primary-foreground"
                   : "text-foreground/70 hover:bg-muted"
               )}
             >
