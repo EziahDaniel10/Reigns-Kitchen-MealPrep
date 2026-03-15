@@ -1,135 +1,137 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, X, CheckCircle2, ChevronRight, Plus, Minus, Trash2 } from 'lucide-react';
+import { ShoppingBag, Plus, Minus, Trash2, X } from 'lucide-react';
 import { useCart } from '@/store/use-cart';
 import { formatPrice } from '@/lib/utils';
 
-interface CartContentProps {
-  onClose?: () => void;
-}
-
-function CartContent({ onClose }: CartContentProps) {
-  const { items, getTotalItems, getSubtotal, updateQuantity, clearCart } = useCart();
-  const [isSubmitted, setIsSubmitted] = useState(false);
-
-  const totalItems = getTotalItems();
+function CartContent({ onClose }: { onClose?: () => void }) {
+  const { items, getSubtotal, updateQuantity, getBundleProgress } = useCart();
+  const { totalMeals, isMinMet, mealsNeeded } = getBundleProgress();
+  
   const subtotal = getSubtotal();
 
-  const handleSubmit = () => {
-    setIsSubmitted(true);
-    setTimeout(() => {
-      clearCart();
-      setIsSubmitted(false);
-      onClose?.();
-    }, 3000);
-  };
-
-  if (isSubmitted) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-6"
-        >
-          <CheckCircle2 className="w-12 h-12 text-primary" />
-        </motion.div>
-        <h2 className="text-3xl font-serif text-primary mb-4">Bundle Confirmed!</h2>
-        <p className="text-muted-foreground text-lg">
-          Your Reigns Kitchen bundle has been submitted successfully. We'll start prepping your fuel!
-        </p>
-      </div>
-    );
-  }
+  const progressPercentage = Math.min((totalMeals / 10) * 100, 100);
 
   return (
-    <div className="flex flex-col h-full bg-card shadow-2xl relative">
-      <div className="flex items-center justify-between p-6 border-b border-border bg-primary text-primary-foreground">
-        <div className="flex items-center gap-3">
-          <ShoppingBag className="w-6 h-6 text-accent" />
-          <h2 className="text-xl font-serif font-bold m-0">Your Bundle</h2>
+    <div className="flex flex-col h-full bg-card relative">
+      {/* Header */}
+      <div className="bg-primary text-primary-foreground py-4 px-5 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2">
+          <ShoppingBag className="w-5 h-5 text-accent" />
+          <h2 className="font-serif font-bold text-lg">Your Order</h2>
         </div>
-        {onClose && (
-          <button onClick={onClose} className="p-2 -mr-2 hover:bg-white/10 rounded-full transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          <span className="bg-accent text-accent-foreground text-xs font-bold px-2 py-0.5 rounded-full">
+            {totalMeals} {totalMeals === 1 ? 'item' : 'items'}
+          </span>
+          {onClose && (
+            <button onClick={onClose} className="p-1 -mr-2 hover:bg-white/10 rounded-full transition-colors cursor-pointer">
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
-        {totalItems === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-70">
-            <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-2">
-              <ShoppingBag className="w-10 h-10 text-muted-foreground" />
-            </div>
-            <h3 className="text-xl font-semibold text-foreground">Bundle is empty</h3>
-            <p className="text-muted-foreground">Start building your perfect meal bundle! 🍽️</p>
+      {/* Bundle Progress */}
+      {totalMeals > 0 && (
+        <div className="px-5 py-4 bg-muted/50 border-b border-border shrink-0">
+          <div className="flex justify-between items-end mb-2">
+            <span className="text-sm font-semibold">{totalMeals} meals selected</span>
+          </div>
+          
+          <div className="relative h-2 bg-border rounded-full mb-3 overflow-hidden">
+            <div 
+              className="absolute top-0 left-0 h-full bg-accent rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${progressPercentage}%` }}
+            />
+            {/* Bundle markers */}
+            {[4, 5, 8, 10].map(point => (
+              <div 
+                key={point}
+                className="absolute top-0 h-full w-0.5 bg-background z-10"
+                style={{ left: `${(point / 10) * 100}%` }}
+              />
+            ))}
+          </div>
+          
+          <div className="text-xs font-medium">
+            {!isMinMet ? (
+              <span className="text-amber-600">
+                Add {mealsNeeded} more {mealsNeeded === 1 ? 'meal' : 'meals'} to start your order
+              </span>
+            ) : (
+              <span className="text-green-700">
+                Bundle minimum met! Keep adding to save more.
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Items */}
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        {totalMeals === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-center opacity-70 mt-10">
+            <ShoppingBag className="w-12 h-12 text-muted-foreground mb-3" />
+            <h3 className="font-semibold text-foreground">Start building your bundle!</h3>
+            <p className="text-sm text-muted-foreground mt-1">Add 4+ meals to place an order</p>
           </div>
         ) : (
-          <div className="space-y-6">
-            <AnimatePresence>
-              {Object.values(items).map((item) => (
-                <motion.div
-                  key={item.id}
-                  layout
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
-                  className="flex flex-col gap-3 pb-6 border-b border-border/60 last:border-0"
-                >
-                  <div className="flex justify-between items-start gap-4">
-                    <h4 className="font-semibold text-foreground leading-tight flex-1">
-                      {item.name}
-                    </h4>
-                    <span className="font-bold text-primary">
-                      {formatPrice(item.price * item.quantity)}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                      {formatPrice(item.price)} each
-                    </div>
-                    
-                    <div className="flex items-center gap-1 bg-muted rounded-lg p-1 border border-border">
-                      <button 
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        className="p-1.5 rounded hover:bg-background transition-colors text-foreground"
-                      >
-                        {item.quantity === 1 ? <Trash2 className="w-3.5 h-3.5 text-destructive" /> : <Minus className="w-3.5 h-3.5" />}
-                      </button>
-                      <span className="w-8 text-center text-sm font-semibold">
-                        {item.quantity}
-                      </span>
-                      <button 
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="p-1.5 rounded hover:bg-background transition-colors text-foreground"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
+          Object.values(items).map(item => (
+            <div key={item.id} className="flex flex-col gap-2 pb-4 border-b border-border/50 last:border-0">
+              <div className="flex justify-between gap-3">
+                <span className="font-medium text-sm text-foreground leading-tight">
+                  {item.name}
+                </span>
+                <span className="font-semibold text-sm">
+                  {formatPrice(item.price * item.quantity)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-xs text-muted-foreground">{formatPrice(item.price)} each</span>
+                <div className="flex items-center gap-2 bg-muted/50 rounded p-0.5">
+                  <button 
+                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                    className="w-5 h-5 flex items-center justify-center rounded hover:bg-background transition-colors text-foreground cursor-pointer"
+                  >
+                    {item.quantity === 1 ? <Trash2 className="w-3 h-3 text-destructive" /> : <Minus className="w-3 h-3" />}
+                  </button>
+                  <span className="w-4 text-center text-xs font-semibold">
+                    {item.quantity}
+                  </span>
+                  <button 
+                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                    className="w-5 h-5 flex items-center justify-center rounded hover:bg-background transition-colors text-foreground cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
         )}
       </div>
 
-      <div className="p-6 bg-background border-t border-border mt-auto">
-        <div className="flex justify-between items-center mb-6">
-          <span className="text-muted-foreground font-medium">Grand Total</span>
-          <span className="text-3xl font-serif font-bold text-primary">
+      {/* Footer */}
+      <div className="p-5 border-t border-border bg-card shrink-0">
+        <div className="flex justify-between items-center mb-3">
+          <span className="text-muted-foreground font-medium">Total</span>
+          <span className="text-xl font-bold text-foreground">
             {formatPrice(subtotal)}
           </span>
         </div>
+        
+        {!isMinMet && totalMeals > 0 && (
+          <div className="text-xs text-amber-600 mb-3 text-center font-medium">
+            Minimum 4 meals required to order
+          </div>
+        )}
+        
         <button
-          disabled={totalItems === 0}
-          onClick={handleSubmit}
-          className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-accent text-accent-foreground hover:brightness-110 shadow-lg shadow-accent/25 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0"
+          disabled={!isMinMet}
+          className="w-full py-3 rounded-lg font-bold transition-all disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed bg-accent text-accent-foreground hover:brightness-110 cursor-pointer"
         >
-          Submit Bundle
-          <ChevronRight className="w-5 h-5" />
+          Complete My Order
         </button>
       </div>
     </div>
@@ -138,20 +140,18 @@ function CartContent({ onClose }: CartContentProps) {
 
 export function CartSidebar() {
   const [isOpen, setIsOpen] = useState(false);
-  const { getTotalItems, getSubtotal } = useCart();
-  const totalItems = getTotalItems();
+  const { getBundleProgress, getSubtotal } = useCart();
+  const { totalMeals } = getBundleProgress();
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:block w-[400px] shrink-0 sticky top-24 h-[calc(100vh-8rem)] rounded-3xl overflow-hidden border-2 border-border shadow-2xl">
+      <div className="sticky top-32 w-80 shrink-0 rounded-xl bg-card shadow-xl border border-border overflow-hidden h-[calc(100vh-9rem)]">
         <CartContent />
       </div>
 
-      {/* Mobile Floating Button & Bottom Sheet */}
       <div className="lg:hidden">
         <AnimatePresence>
-          {totalItems > 0 && !isOpen && (
+          {totalMeals > 0 && !isOpen && (
             <motion.div
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -160,13 +160,13 @@ export function CartSidebar() {
             >
               <button
                 onClick={() => setIsOpen(true)}
-                className="w-full bg-primary text-primary-foreground p-4 rounded-2xl shadow-2xl shadow-primary/30 flex items-center justify-between font-bold text-lg"
+                className="w-full bg-primary text-primary-foreground p-4 rounded-xl shadow-2xl flex items-center justify-between font-bold cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="bg-accent text-accent-foreground w-8 h-8 rounded-full flex items-center justify-center text-sm">
-                    {totalItems}
+                  <div className="bg-accent text-accent-foreground w-6 h-6 rounded-full flex items-center justify-center text-xs">
+                    {totalMeals}
                   </div>
-                  <span>View Bundle</span>
+                  <span>View Order</span>
                 </div>
                 <span>{formatPrice(getSubtotal())}</span>
               </button>
@@ -189,7 +189,7 @@ export function CartSidebar() {
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="fixed inset-x-0 bottom-0 h-[85vh] z-50 rounded-t-3xl overflow-hidden"
+                className="fixed inset-x-0 bottom-0 h-[85vh] z-50 rounded-t-2xl overflow-hidden bg-card"
               >
                 <CartContent onClose={() => setIsOpen(false)} />
               </motion.div>

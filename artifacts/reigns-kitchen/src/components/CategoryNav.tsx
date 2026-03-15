@@ -1,17 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { MENU } from '@/data/menu';
+import { CONFIG } from '@/data/menu';
 
 export function CategoryNav() {
-  const [activeId, setActiveId] = useState(MENU[0].category);
+  const [activeId, setActiveId] = useState(CONFIG.categories[0].id);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        // Find the visible section
         const visibleEntries = entries.filter((entry) => entry.isIntersecting);
         if (visibleEntries.length > 0) {
-          // If multiple are visible, pick the one closest to the top
           const closest = visibleEntries.reduce((prev, curr) => 
             Math.abs(curr.boundingClientRect.top) < Math.abs(prev.boundingClientRect.top) ? curr : prev
           );
@@ -21,8 +19,8 @@ export function CategoryNav() {
       { rootMargin: '-150px 0px -60% 0px' }
     );
 
-    MENU.forEach((cat) => {
-      const el = document.getElementById(cat.category);
+    CONFIG.categories.forEach((cat) => {
+      const el = document.getElementById(cat.id);
       if (el) observer.observe(el);
     });
 
@@ -32,28 +30,27 @@ export function CategoryNav() {
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
     if (el) {
-      // Smooth scroll offset by header height
       const y = el.getBoundingClientRect().top + window.scrollY - 120;
       window.scrollTo({ top: y, behavior: 'smooth' });
     }
   };
 
   return (
-    <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex space-x-6 overflow-x-auto no-scrollbar py-4">
-          {MENU.map((cat) => (
+    <div className="sticky top-16 z-40 bg-background border-b border-border shadow-sm">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex gap-1 overflow-x-auto no-scrollbar px-4 py-2 min-w-max">
+          {CONFIG.categories.map((cat) => (
             <button
-              key={cat.category}
-              onClick={() => scrollTo(cat.category)}
+              key={cat.id}
+              onClick={() => scrollTo(cat.id)}
               className={cn(
-                "whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ease-out",
-                activeId === cat.category 
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 scale-105" 
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                "whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-colors cursor-pointer",
+                activeId === cat.id 
+                  ? "bg-primary text-primary-foreground" 
+                  : "text-foreground/70 hover:bg-muted"
               )}
             >
-              {cat.category}
+              {cat.name}
             </button>
           ))}
         </div>

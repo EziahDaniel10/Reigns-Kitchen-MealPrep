@@ -1,113 +1,110 @@
 import React from 'react';
-import { Plus, Minus, Utensils, Users } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { type MenuItem, PRICES } from '@/data/menu';
+import { Plus, Minus, Trash2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { type CategoryItem } from '@/data/menu';
 import { useCart } from '@/store/use-cart';
-import { formatPrice, cn } from '@/lib/utils';
+import { formatPrice } from '@/lib/utils';
+
+const FOOD_PHOTOS = [
+  "photo-1546069901-ba9599a7e63c",
+  "photo-1565299585323-38d6b0865b47",  
+  "photo-1519708227418-c8fd9a32b7a2",
+  "photo-1567620905732-2d1ec7ab7445",
+  "photo-1512621776951-a57141f2eefd",
+  "photo-1490645935967-10de6ba17061",
+  "photo-1484723091739-30a097e8f929",
+  "photo-1555949258-eb67b1ef0ceb",
+  "photo-1547592180-85f173990554",
+  "photo-1504674900247-0877df9cc836"
+];
 
 interface MealCardProps {
-  item: MenuItem;
-  isFamilyMeal: boolean;
+  item: CategoryItem;
+  itemIndex: number;
+  isFamily: boolean;
 }
 
-export function MealCard({ item, isFamilyMeal }: MealCardProps) {
+export function MealCard({ item, itemIndex, isFamily }: MealCardProps) {
   const { items, addItem, updateQuantity } = useCart();
   const cartItem = items[item.id];
   const quantity = cartItem?.quantity || 0;
-  
-  const price = isFamilyMeal ? PRICES.FAMILY : PRICES.INDIVIDUAL;
+
+  const photoId = FOOD_PHOTOS[itemIndex % FOOD_PHOTOS.length];
+  const photoUrl = `https://images.unsplash.com/${photoId}?w=400&h=280&fit=crop&q=80`;
 
   const handleAdd = () => {
     addItem({
       id: item.id,
       name: item.name,
-      price,
-      isFamilyMeal
+      price: item.price,
+      isFamily
     });
   };
 
   return (
-    <motion.div 
-      whileHover={{ y: -4 }}
-      className={cn(
-        "relative flex flex-col justify-between bg-card rounded-2xl p-6 shadow-md shadow-black/5 border transition-all duration-300",
-        quantity > 0 ? "border-accent ring-1 ring-accent shadow-accent/10" : "border-border/50 hover:border-accent/50 hover:shadow-lg"
-      )}
-    >
-      <div>
-        <div className="flex justify-between items-start gap-4 mb-3">
-          <h3 className="text-xl font-bold text-foreground leading-tight">
+    <div className="bg-card rounded-xl overflow-hidden shadow-sm border border-border hover:-translate-y-1 hover:shadow-md transition-all duration-200 flex flex-col h-full">
+      <div className="relative h-48 w-full overflow-hidden bg-muted">
+        <img src={photoUrl} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+      </div>
+      
+      <div className="p-4 flex flex-col flex-1">
+        <div className="flex justify-between items-start gap-2 mb-1">
+          <h3 className="font-semibold text-sm text-foreground leading-tight flex-1">
             {item.name}
           </h3>
-          <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary whitespace-nowrap">
-            {formatPrice(price)}
+          <span className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">
+            {formatPrice(item.price)}
           </span>
         </div>
-
-        {isFamilyMeal && (
-          <div className="mb-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-accent/20 text-accent-foreground text-xs font-semibold uppercase tracking-wider">
-            <Users className="w-3.5 h-3.5" />
-            Serves 3–4
+        
+        {item.tag && (
+          <div>
+            <span className="inline-block border border-accent text-accent text-[10px] font-bold px-2 py-0.5 rounded-full mt-1">
+              {item.tag}
+            </span>
           </div>
         )}
-
-        {item.description && (
-          <p className="text-muted-foreground text-sm leading-relaxed mb-4">
-            {item.description}
-          </p>
-        )}
-
-        {item.sides && (
-          <div className="flex items-start gap-2 text-sm font-medium text-foreground/80 bg-muted/50 p-3 rounded-xl mb-6 border border-border/50">
-            <Utensils className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-            <span>{item.sides}</span>
+        
+        <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 flex-1">
+          {item.description}
+        </p>
+        
+        <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between">
+          <span className="text-base font-bold text-foreground">
+            {formatPrice(item.price)}
+          </span>
+          
+          <div className="h-8 flex items-center justify-end min-w-[100px]">
+            {quantity === 0 ? (
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={handleAdd}
+                className="bg-secondary text-secondary-foreground text-xs px-3 py-1.5 rounded font-medium hover:brightness-110 transition-all cursor-pointer"
+              >
+                Add to Order
+              </motion.button>
+            ) : (
+              <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-1">
+                <button 
+                  onClick={() => updateQuantity(item.id, quantity - 1)}
+                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-background text-foreground transition-colors cursor-pointer"
+                >
+                  {quantity === 1 ? <Trash2 className="w-3.5 h-3.5 text-destructive" /> : <Minus className="w-3.5 h-3.5" />}
+                </button>
+                <span className="w-4 text-center text-xs font-semibold">
+                  {quantity}
+                </span>
+                <button 
+                  onClick={() => updateQuantity(item.id, quantity + 1)}
+                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-background text-foreground transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
-
-      <div className="mt-auto pt-4 flex items-center justify-end border-t border-border/40">
-        <AnimatePresence mode="wait">
-          {quantity === 0 ? (
-            <motion.button
-              key="add-btn"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              onClick={handleAdd}
-              className="flex items-center gap-2 px-6 py-2.5 bg-background border-2 border-primary text-primary rounded-xl font-semibold hover:bg-primary hover:text-primary-foreground active:scale-95 transition-all shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              Add to Bundle
-            </motion.button>
-          ) : (
-            <motion.div
-              key="qty-counter"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="flex items-center gap-3 bg-primary text-primary-foreground rounded-xl p-1 shadow-md shadow-primary/20"
-            >
-              <button 
-                onClick={() => updateQuantity(item.id, quantity - 1)}
-                className="p-2 rounded-lg hover:bg-white/20 active:scale-90 transition-colors"
-                aria-label="Decrease quantity"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-              <span className="w-6 text-center font-bold text-lg leading-none">
-                {quantity}
-              </span>
-              <button 
-                onClick={() => updateQuantity(item.id, quantity + 1)}
-                className="p-2 rounded-lg hover:bg-white/20 active:scale-90 transition-colors"
-                aria-label="Increase quantity"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </motion.div>
+    </div>
   );
 }

@@ -5,7 +5,14 @@ export interface CartItem {
   name: string;
   price: number;
   quantity: number;
-  isFamilyMeal: boolean;
+  isFamily: boolean;
+}
+
+export interface BundleProgress {
+  totalMeals: number;
+  nextBundle: number | null;
+  mealsNeeded: number;
+  isMinMet: boolean;
 }
 
 interface CartState {
@@ -16,6 +23,7 @@ interface CartState {
   clearCart: () => void;
   getTotalItems: () => number;
   getSubtotal: () => number;
+  getBundleProgress: () => BundleProgress;
 }
 
 export const useCart = create<CartState>((set, get) => ({
@@ -66,5 +74,23 @@ export const useCart = create<CartState>((set, get) => ({
 
   getSubtotal: () => {
     return Object.values(get().items).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  },
+
+  getBundleProgress: () => {
+    const totalMeals = get().getTotalItems();
+    const isMinMet = totalMeals >= 4;
+    const bundles = [4, 5, 8, 10];
+    
+    let nextBundle: number | null = null;
+    for (const b of bundles) {
+      if (totalMeals < b) {
+        nextBundle = b;
+        break;
+      }
+    }
+    
+    const mealsNeeded = nextBundle ? nextBundle - totalMeals : 0;
+    
+    return { totalMeals, nextBundle, mealsNeeded, isMinMet };
   }
 }));
