@@ -1,5 +1,7 @@
 export const CONFIG = {
   brand: "Reigns Kitchen",
+  // ✏️ UPDATE: WhatsApp number for order notifications (no + or spaces)
+  whatsappNumber: "2348106032846",
   tagline: "Real Food. Bold Flavor.",
   subTagline: "Chef-Crafted for Your Week.",
   heroDescription: "Inspired by Southern comfort and global flavors. Reigns Kitchen meals are prepared fresh each week and portioned for real life — whether you're fueling a workout, feeding the family, or just want great food ready when you are.",

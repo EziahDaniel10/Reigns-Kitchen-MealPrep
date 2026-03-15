@@ -1,11 +1,28 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Plus, Minus, Trash2, X } from 'lucide-react';
+import { ShoppingBag, Plus, Minus, Trash2, X, MessageCircle } from 'lucide-react';
 import { useCart } from '@/store/use-cart';
 import { formatPrice } from '@/lib/utils';
+import { CONFIG } from '@/data/menu';
+
+function buildWhatsAppUrl(items: ReturnType<typeof useCart>['items'], subtotal: number, weekLabel: string): string {
+  const lines: string[] = [];
+  lines.push(`🍽️ *REIGNS KITCHEN ORDER — ${weekLabel.toUpperCase()}*`);
+  lines.push('');
+  lines.push('*My Order:*');
+  Object.values(items).forEach(item => {
+    lines.push(`• ${item.name} x${item.quantity} — ${formatPrice(item.price * item.quantity)}`);
+  });
+  lines.push('');
+  lines.push(`*Order Total: ${formatPrice(subtotal)}*`);
+  lines.push('');
+  lines.push('Please confirm availability and my pickup/delivery details. Thank you! 🙏');
+  const message = encodeURIComponent(lines.join('\n'));
+  return `https://wa.me/${CONFIG.whatsappNumber}?text=${message}`;
+}
 
 function CartContent({ onClose }: { onClose?: () => void }) {
-  const { items, getSubtotal, updateQuantity, getBundleProgress } = useCart();
+  const { items, getSubtotal, updateQuantity, getBundleProgress, clearCart } = useCart();
   const { totalMeals, isMinMet, mealsNeeded } = getBundleProgress();
   
   const subtotal = getSubtotal();
@@ -126,13 +143,25 @@ function CartContent({ onClose }: { onClose?: () => void }) {
             Minimum 4 meals required to order
           </div>
         )}
-        
+
         <button
           disabled={!isMinMet}
-          className="w-full py-3 rounded-lg font-bold transition-all disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed bg-accent text-accent-foreground hover:brightness-110 cursor-pointer"
+          onClick={() => {
+            if (!isMinMet) return;
+            const url = buildWhatsAppUrl(items, subtotal, CONFIG.weekLabel);
+            window.open(url, '_blank', 'noopener,noreferrer');
+          }}
+          className="w-full py-3 rounded-lg font-bold transition-all disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed bg-[#25D366] text-white hover:brightness-110 cursor-pointer flex items-center justify-center gap-2"
         >
-          Complete My Order
+          <MessageCircle className="w-4 h-4" />
+          Send Order via WhatsApp
         </button>
+        
+        {isMinMet && (
+          <p className="text-center text-xs text-muted-foreground mt-2">
+            Tapping above opens WhatsApp with your order pre-filled
+          </p>
+        )}
       </div>
     </div>
   );
