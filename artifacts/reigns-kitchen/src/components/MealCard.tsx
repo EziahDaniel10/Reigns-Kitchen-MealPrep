@@ -69,34 +69,34 @@ export function MealCard({ item, itemIndex, isFamily }: MealCardProps) {
           {item.description}
         </p>
         
-        <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between">
-          <span className="text-base font-bold text-foreground">
+        <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between gap-2">
+          <span className="text-sm font-bold text-foreground">
             {formatPrice(item.price)}
           </span>
-          
-          <div className="h-8 flex items-center justify-end min-w-[100px]">
+
+          <div className="flex items-center justify-end">
             {quantity === 0 ? (
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={handleAdd}
-                className="bg-secondary text-secondary-foreground text-xs px-3 py-1.5 rounded font-medium hover:brightness-110 transition-all cursor-pointer"
+                className="bg-secondary text-secondary-foreground text-xs px-4 py-2 rounded font-semibold hover:brightness-110 transition-all cursor-pointer min-h-[36px]"
               >
                 Add to Order
               </motion.button>
             ) : (
-              <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-1">
-                <button 
+              <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1 border border-border">
+                <button
                   onClick={() => updateQuantity(item.id, quantity - 1)}
-                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-background text-foreground transition-colors cursor-pointer"
+                  className="w-7 h-7 flex items-center justify-center rounded hover:bg-background text-foreground transition-colors cursor-pointer"
                 >
                   {quantity === 1 ? <Trash2 className="w-3.5 h-3.5 text-destructive" /> : <Minus className="w-3.5 h-3.5" />}
                 </button>
-                <span className="w-4 text-center text-xs font-semibold">
+                <span className="w-5 text-center text-xs font-bold">
                   {quantity}
                 </span>
-                <button 
+                <button
                   onClick={() => updateQuantity(item.id, quantity + 1)}
-                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-background text-foreground transition-colors cursor-pointer"
+                  className="w-7 h-7 flex items-center justify-center rounded hover:bg-background text-foreground transition-colors cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>

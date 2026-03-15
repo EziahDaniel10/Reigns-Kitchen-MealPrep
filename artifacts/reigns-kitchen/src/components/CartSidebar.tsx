@@ -145,30 +145,35 @@ export function CartSidebar() {
 
   return (
     <>
-      <div className="sticky top-32 w-80 shrink-0 rounded-xl bg-card shadow-xl border border-border overflow-hidden h-[calc(100vh-9rem)]">
+      <div className="hidden lg:block sticky top-32 w-80 shrink-0 rounded-xl bg-card shadow-xl border border-border overflow-hidden h-[calc(100vh-9rem)]">
         <CartContent />
       </div>
 
       <div className="lg:hidden">
         <AnimatePresence>
-          {totalMeals > 0 && !isOpen && (
+          {!isOpen && (
             <motion.div
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
-              className="fixed bottom-6 inset-x-4 z-50"
+              className="fixed bottom-0 inset-x-0 z-50 px-4 pb-4 pt-2 bg-gradient-to-t from-background/95 to-transparent"
             >
               <button
                 onClick={() => setIsOpen(true)}
-                className="w-full bg-primary text-primary-foreground p-4 rounded-xl shadow-2xl flex items-center justify-between font-bold cursor-pointer"
+                className="w-full bg-primary text-primary-foreground p-4 rounded-2xl shadow-2xl shadow-primary/30 flex items-center justify-between font-bold cursor-pointer active:scale-[0.98] transition-transform"
               >
                 <div className="flex items-center gap-3">
-                  <div className="bg-accent text-accent-foreground w-6 h-6 rounded-full flex items-center justify-center text-xs">
+                  <div className="bg-accent text-accent-foreground w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold">
                     {totalMeals}
                   </div>
-                  <span>View Order</span>
+                  <span className="text-base">{totalMeals === 0 ? 'Start My Order' : 'View Order'}</span>
                 </div>
-                <span>{formatPrice(getSubtotal())}</span>
+                <div className="flex items-center gap-2">
+                  {totalMeals > 0 && (
+                    <span className="text-accent font-bold">{formatPrice(getSubtotal())}</span>
+                  )}
+                  <span className="text-primary-foreground/60 text-sm">›</span>
+                </div>
               </button>
             </motion.div>
           )}
