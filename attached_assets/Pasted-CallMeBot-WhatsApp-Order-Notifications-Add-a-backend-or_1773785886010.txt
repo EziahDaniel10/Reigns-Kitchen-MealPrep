@@ -1,0 +1,252 @@
+CallMeBot WhatsApp Order Notifications:
+
+Add a backend order notification system to the Reigns Kitchen meal prep app using CallMeBot's free WhatsApp API. When a customer completes their order, the full order details are instantly sent as a WhatsApp message to the business owner.
+
+📦 Install Dependencies
+bashnpm install express cors dotenv node-fetch
+```
+
+---
+
+## 🔐 Environment Variables (Replit Secrets)
+
+Add these to Replit's Secrets tab — never hardcode them:
+```
+CALLMEBOT_PHONE_1=18732743843
+CALLMEBOT_APIKEY_1=6074802
+```
+
+When the client's number is ready to add later, simply add:
+```
+CALLMEBOT_PHONE_2=their number
+CALLMEBOT_APIKEY_2=their apikey
+No code changes needed — the system automatically detects and notifies all numbers present in the environment variables.
+
+🖥️ Backend — server.js
+jsimport express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import fetch from 'node-fetch';
+
+dotenv.config();
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// Collect all CallMeBot numbers from environment variables
+// Supports unlimited numbers — just add CALLMEBOT_PHONE_3, _4 etc.
+function getRecipients() {
+  const recipients = [];
+  let i = 1;
+  while (process.env[`CALLMEBOT_PHONE_${i}`]) {
+    recipients.push({
+      phone: process.env[`CALLMEBOT_PHONE_${i}`],
+      apikey: process.env[`CALLMEBOT_APIKEY_${i}`]
+    });
+    i++;
+  }
+  return recipients;
+}
+
+// Send WhatsApp message via CallMeBot
+async function sendWhatsApp(phone, apikey, message) {
+  const encoded = encodeURIComponent(message);
+  const url = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encoded}&apikey=${apikey}`;
+  const response = await fetch(url);
+  return response.ok;
+}
+
+// Format the order into a clean WhatsApp message
+function formatOrderMessage(order) {
+  const { customerName, customerPhone, deliveryType, items, total, note, orderNumber } = order;
+
+  const itemList = items
+    .map(item => `• ${item.name} x${item.qty} — $${(item.price * item.qty).toFixed(2)}`)
+    .join('\n');
+
+  return `
+🍽️ NEW ORDER — Reigns Kitchen
+━━━━━━━━━━━━━━━━━━
+🔖 Order #${orderNumber}
+👤 Customer: ${customerName}
+📞 Phone: ${customerPhone}
+🚗 ${deliveryType}
+━━━━━━━━━━━━━━━━━━
+ORDER DETAILS:
+${itemList}
+━━━━━━━━━━━━━━━━━━
+💰 TOTAL: $${total}
+${note ? `📝 Note: ${note}` : ''}
+━━━━━━━━━━━━━━━━━━
+Reply to confirm with customer.
+  `.trim();
+}
+
+// Generate a simple order number
+function generateOrderNumber() {
+  const date = new Date();
+  const dateStr = date.toISOString().slice(0,10).replace(/-/g,'');
+  const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  return `RK-${dateStr}-${rand}`;
+}
+
+// Order submission endpoint
+app.post('/api/send-order', async (req, res) => {
+  try {
+    const order = {
+      ...req.body,
+      orderNumber: generateOrderNumber()
+    };
+
+    // Validate required fields
+    if (!order.customerName || !order.customerPhone || !order.items?.length) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required order fields'
+      });
+    }
+
+    const message = formatOrderMessage(order);
+    const recipients = getRecipients();
+
+    if (recipients.length === 0) {
+      return res.status(500).json({
+        success: false,
+        error: 'No WhatsApp recipients configured'
+      });
+    }
+
+    // Send to all numbers simultaneously
+    const results = await Promise.all(
+      recipients.map(r => sendWhatsApp(r.phone, r.apikey, message))
+    );
+
+    const allSent = results.every(r => r === true);
+
+    res.json({
+      success: allSent,
+      orderNumber: order.orderNumber,
+      message: allSent
+        ? 'Order received! We will confirm shortly.'
+        : 'Order placed but notification partially failed.'
+    });
+
+  } catch (err) {
+    console.error('Order error:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process order'
+    });
+  }
+});
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'Reigns Kitchen API running' });
+});
+
+app.listen(3000, () => {
+  console.log('✅ Reigns Kitchen server running on port 3000');
+});
+
+🖥️ Frontend — Order Submission Function
+Add this to your existing index.html JavaScript:
+jsasync function submitOrder() {
+  // Collect order data from the bundle builder state
+  const order = {
+    customerName: document.getElementById('customer-name').value.trim(),
+    customerPhone: document.getElementById('customer-phone').value.trim(),
+    deliveryType: document.querySelector('input[name="delivery"]:checked')?.value || 'Pickup',
+    note: document.getElementById('order-note').value.trim(),
+    items: cart.map(item => ({
+      name: item.name,
+      qty: item.qty,
+      price: item.price
+    })),
+    total: cart.reduce((sum, item) => sum + item.price * item.qty, 0).toFixed(2)
+  };
+
+  // Basic validation
+  if (!order.customerName || !order.customerPhone) {
+    showError('Please enter your name and phone number.');
+    return;
+  }
+
+  if (order.items.length === 0) {
+    showError('Your bundle is empty.');
+    return;
+  }
+
+  // Show loading state
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Sending order...';
+
+  try {
+    const res = await fetch('/api/send-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(order)
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      showConfirmation(data.orderNumber);
+    } else {
+      showError('Something went wrong. Please call us directly.');
+    }
+  } catch (err) {
+    showError('Connection error. Please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Complete My Order';
+  }
+}
+
+// Show success screen after order
+function showConfirmation(orderNumber) {
+  document.getElementById('order-modal').innerHTML = `
+    <div class="confirmation">
+      <div class="confirmation-icon">✅</div>
+      <h2>Order Received!</h2>
+      <p class="order-number">Order #${orderNumber}</p>
+      <p>We've received your order and will confirm via WhatsApp or phone shortly.</p>
+      <p class="deadline-reminder">
+        📅 Remember: Order deadline is Friday – Sunday by 4 PM.<br>
+        🚗 Delivery every Friday.
+      </p>
+      <button onclick="closeModal()">Back to Menu</button>
+    </div>
+  `;
+}
+
+function showError(message) {
+  document.getElementById('form-error').textContent = message;
+  document.getElementById('form-error').style.display = 'block';
+}
+```
+
+---
+
+## 📱 What the WhatsApp Message Looks Like
+
+Every order arrives formatted like this in your WhatsApp:
+```
+🍽️ NEW ORDER — Reigns Kitchen
+━━━━━━━━━━━━━━━━━━
+🔖 Order #RK-20260317-042
+👤 Customer: Sarah Johnson
+📞 Phone: +1 832 555 0192
+🚗 Delivery
+━━━━━━━━━━━━━━━━━━
+ORDER DETAILS:
+- Braised Turkey Wings Plate x2 — $29.98
+- Cajun Shrimp & Grits Bowl x1 — $14.99
+- Greek Yogurt Fruit Parfait x2 — $17.98
+━━━━━━━━━━━━━━━━━━
+💰 TOTAL: $62.95
+📝 Note: No kale please
+━━━━━━━━━━━━━━━━━━
+Reply to confirm with customer.

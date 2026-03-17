@@ -26,3 +26,8 @@ path = "scripts/post-merge.sh"
 timeoutMs = 20000
 
 [nix]
+
+[userenv]
+
+[userenv.shared]
+CALLMEBOT_PHONE_1 = "18732743843"

@@ -1,36 +1,55 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Plus, Minus, Trash2, X, MessageCircle } from 'lucide-react';
+import { ShoppingBag, Plus, Minus, Trash2, X, ChevronLeft, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { useCart } from '@/store/use-cart';
 import { formatPrice } from '@/lib/utils';
 import { CONFIG } from '@/data/menu';
 
-function buildWhatsAppUrl(items: ReturnType<typeof useCart>['items'], subtotal: number, weekLabel: string): string {
-  const lines: string[] = [];
-  lines.push(`🍽️ *REIGNS KITCHEN ORDER — ${weekLabel.toUpperCase()}*`);
-  lines.push('');
-  lines.push('*My Order:*');
-  Object.values(items).forEach(item => {
-    lines.push(`• ${item.name} x${item.quantity} — ${formatPrice(item.price * item.quantity)}`);
-  });
-  lines.push('');
-  lines.push(`*Order Total: ${formatPrice(subtotal)}*`);
-  lines.push('');
-  lines.push('Please confirm availability and my pickup/delivery details. Thank you! 🙏');
-  const message = encodeURIComponent(lines.join('\n'));
-  return `https://wa.me/${CONFIG.whatsappNumber}?text=${message}`;
+type Screen = 'cart' | 'checkout' | 'success' | 'error';
+
+interface OrderForm {
+  customerName: string;
+  customerPhone: string;
+  deliveryType: 'Pickup' | 'Delivery';
+  note: string;
 }
 
-function CartContent({ onClose }: { onClose?: () => void }) {
-  const { items, getSubtotal, updateQuantity, getBundleProgress, clearCart } = useCart();
-  const { totalMeals, isMinMet, mealsNeeded } = getBundleProgress();
-  
-  const subtotal = getSubtotal();
+async function submitOrder(
+  form: OrderForm,
+  items: ReturnType<typeof useCart>['items'],
+  subtotal: number
+): Promise<{ success: boolean; orderNumber?: string; error?: string }> {
+  const orderItems = Object.values(items).map(item => ({
+    name: item.name,
+    qty: item.quantity,
+    price: item.price,
+  }));
 
+  const res = await fetch('/api/send-order', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      customerName: form.customerName,
+      customerPhone: form.customerPhone,
+      deliveryType: form.deliveryType,
+      note: form.note,
+      items: orderItems,
+      total: subtotal.toFixed(2),
+    }),
+  });
+
+  const data = await res.json();
+  return data;
+}
+
+function CartItems({ onClose }: { onClose?: () => void }) {
+  const { items, getSubtotal, updateQuantity, getBundleProgress } = useCart();
+  const { totalMeals, isMinMet, mealsNeeded } = getBundleProgress();
+  const subtotal = getSubtotal();
   const progressPercentage = Math.min((totalMeals / 10) * 100, 100);
 
   return (
-    <div className="flex flex-col h-full bg-card relative">
+    <>
       {/* Header */}
       <div className="bg-primary text-primary-foreground py-4 px-5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
@@ -55,31 +74,26 @@ function CartContent({ onClose }: { onClose?: () => void }) {
           <div className="flex justify-between items-end mb-2">
             <span className="text-sm font-semibold">{totalMeals} meals selected</span>
           </div>
-          
           <div className="relative h-2 bg-border rounded-full mb-3 overflow-hidden">
-            <div 
+            <div
               className="absolute top-0 left-0 h-full bg-accent rounded-full transition-all duration-500 ease-out"
               style={{ width: `${progressPercentage}%` }}
             />
-            {/* Bundle markers */}
             {[4, 5, 8, 10].map(point => (
-              <div 
+              <div
                 key={point}
                 className="absolute top-0 h-full w-0.5 bg-background z-10"
                 style={{ left: `${(point / 10) * 100}%` }}
               />
             ))}
           </div>
-          
           <div className="text-xs font-medium">
             {!isMinMet ? (
               <span className="text-amber-600">
                 Add {mealsNeeded} more {mealsNeeded === 1 ? 'meal' : 'meals'} to start your order
               </span>
             ) : (
-              <span className="text-green-700">
-                Bundle minimum met! Keep adding to save more.
-              </span>
+              <span className="text-green-700">Bundle minimum met! Keep adding to save more.</span>
             )}
           </div>
         </div>
@@ -97,26 +111,20 @@ function CartContent({ onClose }: { onClose?: () => void }) {
           Object.values(items).map(item => (
             <div key={item.id} className="flex flex-col gap-2 pb-4 border-b border-border/50 last:border-0">
               <div className="flex justify-between gap-3">
-                <span className="font-medium text-sm text-foreground leading-tight">
-                  {item.name}
-                </span>
-                <span className="font-semibold text-sm">
-                  {formatPrice(item.price * item.quantity)}
-                </span>
+                <span className="font-medium text-sm text-foreground leading-tight">{item.name}</span>
+                <span className="font-semibold text-sm">{formatPrice(item.price * item.quantity)}</span>
               </div>
               <div className="flex items-center justify-between mt-1">
                 <span className="text-xs text-muted-foreground">{formatPrice(item.price)} each</span>
                 <div className="flex items-center gap-2 bg-muted/50 rounded p-0.5">
-                  <button 
+                  <button
                     onClick={() => updateQuantity(item.id, item.quantity - 1)}
                     className="w-5 h-5 flex items-center justify-center rounded hover:bg-background transition-colors text-foreground cursor-pointer"
                   >
                     {item.quantity === 1 ? <Trash2 className="w-3 h-3 text-destructive" /> : <Minus className="w-3 h-3" />}
                   </button>
-                  <span className="w-4 text-center text-xs font-semibold">
-                    {item.quantity}
-                  </span>
-                  <button 
+                  <span className="w-4 text-center text-xs font-semibold">{item.quantity}</span>
+                  <button
                     onClick={() => updateQuantity(item.id, item.quantity + 1)}
                     className="w-5 h-5 flex items-center justify-center rounded hover:bg-background transition-colors text-foreground cursor-pointer"
                   >
@@ -133,36 +141,247 @@ function CartContent({ onClose }: { onClose?: () => void }) {
       <div className="p-5 border-t border-border bg-card shrink-0">
         <div className="flex justify-between items-center mb-3">
           <span className="text-muted-foreground font-medium">Total</span>
-          <span className="text-xl font-bold text-foreground">
-            {formatPrice(subtotal)}
-          </span>
+          <span className="text-xl font-bold text-foreground">{formatPrice(subtotal)}</span>
         </div>
-        
         {!isMinMet && totalMeals > 0 && (
           <div className="text-xs text-amber-600 mb-3 text-center font-medium">
             Minimum 4 meals required to order
           </div>
         )}
+      </div>
+    </>
+  );
+}
 
-        <button
-          disabled={!isMinMet}
-          onClick={() => {
-            if (!isMinMet) return;
-            const url = buildWhatsAppUrl(items, subtotal, CONFIG.weekLabel);
-            window.open(url, '_blank', 'noopener,noreferrer');
-          }}
-          className="w-full py-3 rounded-lg font-bold transition-all disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed bg-[#25D366] text-white hover:brightness-110 cursor-pointer flex items-center justify-center gap-2"
-        >
-          <MessageCircle className="w-4 h-4" />
-          Send Order via WhatsApp
+function CheckoutForm({
+  onBack,
+  onSuccess,
+  onError,
+}: {
+  onBack: () => void;
+  onSuccess: (orderNumber: string) => void;
+  onError: () => void;
+}) {
+  const { items, getSubtotal, getBundleProgress } = useCart();
+  const { totalMeals } = getBundleProgress();
+  const subtotal = getSubtotal();
+
+  const [form, setForm] = useState<OrderForm>({
+    customerName: '',
+    customerPhone: '',
+    deliveryType: 'Pickup',
+    note: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [fieldError, setFieldError] = useState('');
+
+  const handleSubmit = async () => {
+    if (!form.customerName.trim()) { setFieldError('Please enter your name.'); return; }
+    if (!form.customerPhone.trim()) { setFieldError('Please enter your phone number.'); return; }
+    setFieldError('');
+    setLoading(true);
+    try {
+      const result = await submitOrder(form, items, subtotal);
+      if (result.success) {
+        onSuccess(result.orderNumber ?? 'RK-???');
+      } else {
+        onError();
+      }
+    } catch {
+      onError();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      {/* Header */}
+      <div className="bg-primary text-primary-foreground py-4 px-5 flex items-center gap-3 shrink-0">
+        <button onClick={onBack} className="p-1 hover:bg-white/10 rounded-full transition-colors cursor-pointer">
+          <ChevronLeft className="w-5 h-5" />
         </button>
-        
-        {isMinMet && (
-          <p className="text-center text-xs text-muted-foreground mt-2">
-            Tapping above opens WhatsApp with your order pre-filled
-          </p>
+        <h2 className="font-serif font-bold text-lg">Your Details</h2>
+      </div>
+
+      {/* Order summary strip */}
+      <div className="px-5 py-3 bg-muted/60 border-b border-border shrink-0 flex justify-between text-sm">
+        <span className="text-muted-foreground">{totalMeals} meals</span>
+        <span className="font-bold text-foreground">{formatPrice(subtotal)}</span>
+      </div>
+
+      {/* Form */}
+      <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+        <div>
+          <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Full Name *</label>
+          <input
+            type="text"
+            placeholder="Your name"
+            value={form.customerName}
+            onChange={e => setForm(f => ({ ...f, customerName: e.target.value }))}
+            className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Phone Number *</label>
+          <input
+            type="tel"
+            placeholder="+1 (555) 000-0000"
+            value={form.customerPhone}
+            onChange={e => setForm(f => ({ ...f, customerPhone: e.target.value }))}
+            className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Order Type</label>
+          <div className="grid grid-cols-2 gap-2">
+            {(['Pickup', 'Delivery'] as const).map(type => (
+              <button
+                key={type}
+                onClick={() => setForm(f => ({ ...f, deliveryType: type }))}
+                className={`py-2.5 rounded-lg text-sm font-semibold border transition-all cursor-pointer ${
+                  form.deliveryType === type
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'border-border text-foreground hover:border-primary/40'
+                }`}
+              >
+                {type === 'Pickup' ? '🏪 Pickup' : '🚗 Delivery'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
+            Special Note <span className="text-muted-foreground font-normal normal-case">(optional)</span>
+          </label>
+          <textarea
+            placeholder="Allergies, substitutions, preferences..."
+            value={form.note}
+            onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+            rows={3}
+            className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all resize-none"
+          />
+        </div>
+
+        {fieldError && (
+          <p className="text-xs text-destructive font-medium">{fieldError}</p>
         )}
       </div>
+
+      {/* Submit */}
+      <div className="p-5 border-t border-border bg-card shrink-0">
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="w-full py-3 rounded-lg font-bold bg-[#25D366] text-white hover:brightness-110 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Sending Order...
+            </>
+          ) : (
+            <>
+              <span>📲</span>
+              Send Order via WhatsApp
+            </>
+          )}
+        </button>
+        <p className="text-center text-xs text-muted-foreground mt-2">
+          {CONFIG.orderDeadline}
+        </p>
+      </div>
+    </>
+  );
+}
+
+function SuccessScreen({ orderNumber, onClose }: { orderNumber: string; onClose: () => void }) {
+  const { clearCart } = useCart();
+
+  const handleClose = () => {
+    clearCart();
+    onClose();
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-card items-center justify-center px-6 text-center">
+      <CheckCircle className="w-16 h-16 text-green-500 mb-4" />
+      <h2 className="font-serif text-2xl font-bold text-foreground mb-2">Order Received!</h2>
+      <p className="text-sm font-semibold text-muted-foreground mb-1">Order #{orderNumber}</p>
+      <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
+        We've received your order and will confirm via WhatsApp or phone shortly.
+      </p>
+      <div className="mt-5 bg-muted/60 rounded-xl p-4 text-xs text-muted-foreground text-left w-full">
+        <p>📅 Order deadline: {CONFIG.orderDeadline}</p>
+        <p className="mt-1">🚗 {CONFIG.deliveryNote}</p>
+      </div>
+      <button
+        onClick={handleClose}
+        className="mt-6 w-full py-3 rounded-lg bg-primary text-primary-foreground font-bold hover:brightness-110 transition-all cursor-pointer"
+      >
+        Back to Menu
+      </button>
+    </div>
+  );
+}
+
+function ErrorScreen({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="flex flex-col h-full bg-card items-center justify-center px-6 text-center">
+      <AlertCircle className="w-16 h-16 text-destructive mb-4" />
+      <h2 className="font-serif text-2xl font-bold text-foreground mb-2">Something went wrong</h2>
+      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+        We couldn't send your order. Please try again or contact us directly.
+      </p>
+      <button
+        onClick={onBack}
+        className="mt-6 w-full py-3 rounded-lg bg-primary text-primary-foreground font-bold hover:brightness-110 transition-all cursor-pointer"
+      >
+        Try Again
+      </button>
+    </div>
+  );
+}
+
+function CartPanel({ onClose }: { onClose?: () => void }) {
+  const [screen, setScreen] = useState<Screen>('cart');
+  const [orderNumber, setOrderNumber] = useState('');
+  const { getBundleProgress } = useCart();
+  const { isMinMet } = getBundleProgress();
+
+  return (
+    <div className="flex flex-col h-full bg-card relative">
+      {screen === 'cart' && (
+        <>
+          <CartItems onClose={onClose} />
+          {/* Proceed button lives outside CartItems so it can change screen */}
+          <div className="px-5 pb-5 bg-card shrink-0">
+            <button
+              disabled={!isMinMet}
+              onClick={() => isMinMet && setScreen('checkout')}
+              className="w-full py-3 rounded-lg font-bold transition-all disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed bg-accent text-accent-foreground hover:brightness-110 cursor-pointer"
+            >
+              Proceed to Checkout →
+            </button>
+          </div>
+        </>
+      )}
+      {screen === 'checkout' && (
+        <CheckoutForm
+          onBack={() => setScreen('cart')}
+          onSuccess={(num) => { setOrderNumber(num); setScreen('success'); }}
+          onError={() => setScreen('error')}
+        />
+      )}
+      {screen === 'success' && (
+        <SuccessScreen orderNumber={orderNumber} onClose={() => { setScreen('cart'); onClose?.(); }} />
+      )}
+      {screen === 'error' && (
+        <ErrorScreen onBack={() => setScreen('checkout')} />
+      )}
     </div>
   );
 }
@@ -174,10 +393,12 @@ export function CartSidebar() {
 
   return (
     <>
+      {/* Desktop sticky sidebar */}
       <div className="hidden lg:block sticky top-32 w-80 shrink-0 rounded-xl bg-card shadow-xl border border-border overflow-hidden h-[calc(100vh-9rem)]">
-        <CartContent />
+        <CartPanel />
       </div>
 
+      {/* Mobile */}
       <div className="lg:hidden">
         <AnimatePresence>
           {!isOpen && (
@@ -219,13 +440,13 @@ export function CartSidebar() {
                 className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
               />
               <motion.div
-                initial={{ y: "100%" }}
+                initial={{ y: '100%' }}
                 animate={{ y: 0 }}
-                exit={{ y: "100%" }}
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="fixed inset-x-0 bottom-0 h-[85vh] z-50 rounded-t-2xl overflow-hidden bg-card"
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="fixed inset-x-0 bottom-0 h-[90vh] z-50 rounded-t-2xl overflow-hidden bg-card"
               >
-                <CartContent onClose={() => setIsOpen(false)} />
+                <CartPanel onClose={() => setIsOpen(false)} />
               </motion.div>
             </>
           )}
