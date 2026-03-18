@@ -316,7 +316,7 @@ function SuccessScreen({ orderNumber, onClose }: { orderNumber: string; onClose:
       <h2 className="font-serif text-2xl font-bold text-foreground mb-2">Order Received!</h2>
       <p className="text-sm font-semibold text-muted-foreground mb-1">Order #{orderNumber}</p>
       <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
-        We've received your order and will confirm via WhatsApp or phone shortly.
+        We've received your order and will confirm via WhatsApp, phone or email shortly.
       </p>
       <div className="mt-5 bg-muted/60 rounded-xl p-4 text-xs text-muted-foreground text-left w-full">
         <p>📅 Order deadline: {CONFIG.orderDeadline}</p>
