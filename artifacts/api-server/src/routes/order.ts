@@ -35,6 +35,7 @@ interface OrderItem {
 interface OrderBody {
   customerName: string;
   customerPhone: string;
+  customerEmail?: string;
   deliveryType: string;
   note?: string;
   items: OrderItem[];
@@ -42,7 +43,7 @@ interface OrderBody {
 }
 
 function formatOrderMessage(order: OrderBody & { orderNumber: string }): string {
-  const { customerName, customerPhone, items, note, orderNumber } = order;
+  const { customerName, customerPhone, customerEmail, items, note, orderNumber } = order;
 
   const itemList = items
     .map(item => {
@@ -65,8 +66,9 @@ function formatOrderMessage(order: OrderBody & { orderNumber: string }): string 
     `🍽️ NEW ORDER — Reigns Kitchen`,
     `━━━━━━━━━━━━━━━━━━`,
     `🔖 Order #${orderNumber}`,
-    `👤 Customer: ${customerName}`,
+    `👤 Name: ${customerName}`,
     `📞 Phone: ${customerPhone}`,
+    customerEmail ? `📧 Email: ${customerEmail}` : '',
     `━━━━━━━━━━━━━━━━━━`,
     `🚗 DELIVERY`,
     `━━━━━━━━━━━━━━━━━━`,

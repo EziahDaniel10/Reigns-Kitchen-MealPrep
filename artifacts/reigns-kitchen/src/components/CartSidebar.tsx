@@ -10,6 +10,7 @@ type Screen = 'cart' | 'checkout' | 'success' | 'error';
 interface OrderForm {
   customerName: string;
   customerPhone: string;
+  customerEmail: string;
   note: string;
 }
 
@@ -39,6 +40,7 @@ async function submitOrder(
     body: JSON.stringify({
       customerName: form.customerName,
       customerPhone: form.customerPhone,
+      customerEmail: form.customerEmail,
       deliveryType: 'Delivery',
       note: form.note,
       items: orderItems,
@@ -177,6 +179,7 @@ function CheckoutForm({
   const [form, setForm] = useState<OrderForm>({
     customerName: '',
     customerPhone: '',
+    customerEmail: '',
     note: '',
   });
   const [loading, setLoading] = useState(false);
@@ -237,6 +240,19 @@ function CheckoutForm({
             placeholder="+1 (555) 000-0000"
             value={form.customerPhone}
             onChange={e => setForm(f => ({ ...f, customerPhone: e.target.value }))}
+            className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
+            Email <span className="text-muted-foreground font-normal normal-case">(optional)</span>
+          </label>
+          <input
+            type="email"
+            placeholder="you@example.com"
+            value={form.customerEmail}
+            onChange={e => setForm(f => ({ ...f, customerEmail: e.target.value }))}
             className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
           />
         </div>
