@@ -34,3 +34,4 @@ channel = "stable-25_05"
 [userenv.shared]
 CALLMEBOT_PHONE_1 = "18732743843"
 CALLMEBOT_PHONE_2 = "12028396203"
+OWNER_EMAIL = "catering@reignskitchen.com"
