@@ -21,8 +21,11 @@ async function sendWhatsApp(phone: string, apikey: string, message: string): Pro
   const url = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encoded}&apikey=${apikey}`;
   try {
     const response = await fetch(url);
+    const body = await response.text();
+    console.log(`WhatsApp → +${phone}: status=${response.status} body=${body.slice(0, 120)}`);
     return response.ok;
-  } catch {
+  } catch (err) {
+    console.error(`WhatsApp → +${phone}: FAILED`, err);
     return false;
   }
 }
