@@ -46,15 +46,19 @@ function formatOrderMessage(order: OrderBody & { orderNumber: string }): string 
 
   const itemList = items
     .map(item => {
-      const price = parseFloat(String(item.price));
-      const qty = parseInt(String(item.qty));
+      const price = Number(String(item.price).replace(/[^0-9.]/g, ''));
+      const qty = parseInt(String(item.qty), 10);
       const lineTotal = (price * qty).toFixed(2);
       return `• ${item.name} x${qty} — $${lineTotal}`;
     })
     .join('\n');
 
   const grandTotal = items
-    .reduce((sum, item) => sum + parseFloat(String(item.price)) * parseInt(String(item.qty)), 0)
+    .reduce((sum, item) => {
+      const price = Number(String(item.price).replace(/[^0-9.]/g, ''));
+      const qty = parseInt(String(item.qty), 10);
+      return sum + (price * qty);
+    }, 0)
     .toFixed(2);
 
   return [

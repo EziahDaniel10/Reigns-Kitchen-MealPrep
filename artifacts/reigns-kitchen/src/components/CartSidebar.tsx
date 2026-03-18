@@ -20,13 +20,18 @@ async function submitOrder(
 ): Promise<{ success: boolean; orderNumber?: string; error?: string }> {
   const orderItems = Object.values(items).map(item => ({
     name: item.name,
-    qty: Number(item.quantity),
-    price: parseFloat(String(item.price)),
+    qty: parseInt(String(item.quantity), 10),
+    price: Number(String(item.price).replace(/[^0-9.]/g, '')),
   }));
 
-  const total = orderItems
-    .reduce((sum, i) => sum + parseFloat(String(i.price)) * Number(i.qty), 0)
-    .toFixed(2);
+  const total = orderItems.reduce((sum, i) => {
+    const cleanPrice = Number(String(i.price).replace(/[^0-9.]/g, ''));
+    const cleanQty = parseInt(String(i.qty), 10);
+    return sum + (cleanPrice * cleanQty);
+  }, 0).toFixed(2);
+
+  console.log('Cart items being submitted:', JSON.stringify(orderItems));
+  console.log('Total being submitted:', total);
 
   const res = await fetch('/api/send-order', {
     method: 'POST',
