@@ -1,0 +1,78 @@
+Fix 3 — Delivery only, remove pickup
+Remove all references to pickup throughout the entire app:
+
+Delete the Pickup/Delivery toggle from the order form
+The delivery type is now always "Delivery" — hardcode it:
+
+js// In submitOrder(), replace the deliveryType field with:
+deliveryType: 'Delivery'
+
+In formatOrderMessage(), update the delivery line to always show:
+
+js🚗 DELIVERY
+```
+
+- Remove any pickup-related UI, labels, conditionals, or copy anywhere in the frontend
+
+---
+
+After these fixes the WhatsApp message should look like this:
+```
+🍽️ NEW ORDER — Reigns Kitchen
+━━━━━━━━━━━━━━━━━━
+🔖 Order #RK-20260318-533
+👤 Name: Daniel
+📞 Phone: 08106032846
+📧 Email: daniel@gmail.com
+━━━━━━━━━━━━━━━━━━
+🚗 DELIVERY
+📍 Address: 123 Main St
+📅 Date: Friday, March 20, 2026
+━━━━━━━━━━━━━━━━━━
+ORDER:
+- Braised Turkey Wings Plate x4 — $59.96
+━━━━━━━━━━━━━━━━━━
+💰 TOTAL: $59.96remove delivery date, that will be communicated manually7:59 AMREPLIT FIX PROMPT:
+
+Remove the delivery date field completely from the entire app:
+Frontend
+
+Delete the delivery date dropdown/input from the order form
+Remove deliveryDate from the submitOrder() data object:
+
+js// DELETE this line:
+deliveryDate: document.getElementById('delivery-date').value,
+
+Remove delivery date from the confirmation screen shown to the customer after ordering
+Remove the getUpcomingFridays() function entirely — it is no longer needed
+
+Backend
+
+Remove deliveryDate from the formatOrderMessage() function:
+
+js// DELETE this line:
+📅 Date: ${deliveryDate}
+```
+
+### EmailJS Templates
+- Remove `{{delivery_date}}` from both the customer confirmation template and the owner alert template in the EmailJS dashboard
+
+---
+
+The WhatsApp message should now look like this:
+```
+🍽️ NEW ORDER — Reigns Kitchen
+━━━━━━━━━━━━━━━━━━
+🔖 Order #RK-20260318-533
+👤 Name: Daniel
+📞 Phone: 08106032846
+📧 Email: daniel@gmail.com
+━━━━━━━━━━━━━━━━━━
+🚗 DELIVERY
+📍 Address: 123 Main St
+━━━━━━━━━━━━━━━━━━
+ORDER:
+- Braised Turkey Wings Plate x4 — $59.96
+━━━━━━━━━━━━━━━━━━
+💰 TOTAL: $59.96
+Clean and simple — delivery details handled manually between your client and the customer.

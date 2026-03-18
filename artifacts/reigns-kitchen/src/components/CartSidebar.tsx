@@ -10,7 +10,6 @@ type Screen = 'cart' | 'checkout' | 'success' | 'error';
 interface OrderForm {
   customerName: string;
   customerPhone: string;
-  deliveryType: 'Pickup' | 'Delivery';
   note: string;
 }
 
@@ -21,9 +20,13 @@ async function submitOrder(
 ): Promise<{ success: boolean; orderNumber?: string; error?: string }> {
   const orderItems = Object.values(items).map(item => ({
     name: item.name,
-    qty: item.quantity,
-    price: item.price,
+    qty: Number(item.quantity),
+    price: parseFloat(String(item.price)),
   }));
+
+  const total = orderItems
+    .reduce((sum, i) => sum + parseFloat(String(i.price)) * Number(i.qty), 0)
+    .toFixed(2);
 
   const res = await fetch('/api/send-order', {
     method: 'POST',
@@ -31,10 +34,10 @@ async function submitOrder(
     body: JSON.stringify({
       customerName: form.customerName,
       customerPhone: form.customerPhone,
-      deliveryType: form.deliveryType,
+      deliveryType: 'Delivery',
       note: form.note,
       items: orderItems,
-      total: subtotal.toFixed(2),
+      total,
     }),
   });
 
@@ -169,7 +172,6 @@ function CheckoutForm({
   const [form, setForm] = useState<OrderForm>({
     customerName: '',
     customerPhone: '',
-    deliveryType: 'Pickup',
     note: '',
   });
   const [loading, setLoading] = useState(false);
@@ -232,25 +234,6 @@ function CheckoutForm({
             onChange={e => setForm(f => ({ ...f, customerPhone: e.target.value }))}
             className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
           />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Order Type</label>
-          <div className="grid grid-cols-2 gap-2">
-            {(['Pickup', 'Delivery'] as const).map(type => (
-              <button
-                key={type}
-                onClick={() => setForm(f => ({ ...f, deliveryType: type }))}
-                className={`py-2.5 rounded-lg text-sm font-semibold border transition-all cursor-pointer ${
-                  form.deliveryType === type
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'border-border text-foreground hover:border-primary/40'
-                }`}
-              >
-                {type === 'Pickup' ? '🏪 Pickup' : '🚗 Delivery'}
-              </button>
-            ))}
-          </div>
         </div>
 
         <div>

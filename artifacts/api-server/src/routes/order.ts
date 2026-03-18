@@ -42,11 +42,20 @@ interface OrderBody {
 }
 
 function formatOrderMessage(order: OrderBody & { orderNumber: string }): string {
-  const { customerName, customerPhone, deliveryType, items, total, note, orderNumber } = order;
+  const { customerName, customerPhone, items, note, orderNumber } = order;
 
   const itemList = items
-    .map(item => `• ${item.name} x${item.qty} — $${(item.price * item.qty).toFixed(2)}`)
+    .map(item => {
+      const price = parseFloat(String(item.price));
+      const qty = parseInt(String(item.qty));
+      const lineTotal = (price * qty).toFixed(2);
+      return `• ${item.name} x${qty} — $${lineTotal}`;
+    })
     .join('\n');
+
+  const grandTotal = items
+    .reduce((sum, item) => sum + parseFloat(String(item.price)) * parseInt(String(item.qty)), 0)
+    .toFixed(2);
 
   return [
     `🍽️ NEW ORDER — Reigns Kitchen`,
@@ -54,15 +63,15 @@ function formatOrderMessage(order: OrderBody & { orderNumber: string }): string 
     `🔖 Order #${orderNumber}`,
     `👤 Customer: ${customerName}`,
     `📞 Phone: ${customerPhone}`,
-    `🚗 ${deliveryType}`,
     `━━━━━━━━━━━━━━━━━━`,
-    `ORDER DETAILS:`,
+    `🚗 DELIVERY`,
+    `━━━━━━━━━━━━━━━━━━`,
+    `ORDER:`,
     itemList,
     `━━━━━━━━━━━━━━━━━━`,
-    `💰 TOTAL: $${total}`,
+    `💰 TOTAL: $${grandTotal}`,
     note ? `📝 Note: ${note}` : '',
     `━━━━━━━━━━━━━━━━━━`,
-    `Reply to confirm with customer.`,
   ].filter(Boolean).join('\n');
 }
 
