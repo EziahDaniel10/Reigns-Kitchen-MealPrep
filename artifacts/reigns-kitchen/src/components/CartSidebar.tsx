@@ -11,6 +11,7 @@ interface OrderForm {
   customerName: string;
   customerPhone: string;
   customerEmail: string;
+  deliveryAddress: string;
   note: string;
 }
 
@@ -41,6 +42,7 @@ async function submitOrder(
       customerName: form.customerName,
       customerPhone: form.customerPhone,
       customerEmail: form.customerEmail,
+      deliveryAddress: form.deliveryAddress,
       deliveryType: 'Delivery',
       note: form.note,
       items: orderItems,
@@ -180,6 +182,7 @@ function CheckoutForm({
     customerName: '',
     customerPhone: '',
     customerEmail: '',
+    deliveryAddress: '',
     note: '',
   });
   const [loading, setLoading] = useState(false);
@@ -188,6 +191,7 @@ function CheckoutForm({
   const handleSubmit = async () => {
     if (!form.customerName.trim()) { setFieldError('Please enter your name.'); return; }
     if (!form.customerPhone.trim()) { setFieldError('Please enter your phone number.'); return; }
+    if (!form.deliveryAddress.trim()) { setFieldError('Please enter your delivery address.'); return; }
     setFieldError('');
     setLoading(true);
     try {
@@ -241,6 +245,17 @@ function CheckoutForm({
             value={form.customerPhone}
             onChange={e => setForm(f => ({ ...f, customerPhone: e.target.value }))}
             className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Delivery Address *</label>
+          <textarea
+            placeholder="Street address, city, state, zip..."
+            value={form.deliveryAddress}
+            onChange={e => setForm(f => ({ ...f, deliveryAddress: e.target.value }))}
+            rows={2}
+            className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all resize-none"
           />
         </div>
 
