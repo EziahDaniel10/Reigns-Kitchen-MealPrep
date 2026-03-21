@@ -199,6 +199,7 @@ function CheckoutForm({
     if (!form.customerPhone.trim()) { setFieldError('Please enter your phone number.'); return; }
     if (!form.deliveryAddress.trim()) { setFieldError('Please enter your delivery address.'); return; }
     if (!form.deliveryWindow) { setFieldError('Please select a delivery window.'); return; }
+    if (!form.customerEmail.trim()) { setFieldError('Please enter your email address.'); return; }
     setFieldError('');
     setLoading(true);
     try {
@@ -267,9 +268,7 @@ function CheckoutForm({
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
-            Email <span className="text-muted-foreground font-normal normal-case">(optional)</span>
-          </label>
+          <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Email *</label>
           <input
             type="email"
             placeholder="you@example.com"
