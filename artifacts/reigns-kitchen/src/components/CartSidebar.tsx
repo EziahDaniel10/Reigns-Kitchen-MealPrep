@@ -12,6 +12,7 @@ interface OrderForm {
   customerPhone: string;
   customerEmail: string;
   deliveryAddress: string;
+  deliveryWindow: string;
   allergies: string;
   note: string;
 }
@@ -44,6 +45,7 @@ async function submitOrder(
       customerPhone: form.customerPhone,
       customerEmail: form.customerEmail,
       deliveryAddress: form.deliveryAddress,
+      deliveryWindow: form.deliveryWindow,
       allergies: form.allergies,
       deliveryType: 'Delivery',
       note: form.note,
@@ -185,6 +187,7 @@ function CheckoutForm({
     customerPhone: '',
     customerEmail: '',
     deliveryAddress: '',
+    deliveryWindow: '',
     allergies: '',
     note: '',
   });
@@ -195,6 +198,7 @@ function CheckoutForm({
     if (!form.customerName.trim()) { setFieldError('Please enter your name.'); return; }
     if (!form.customerPhone.trim()) { setFieldError('Please enter your phone number.'); return; }
     if (!form.deliveryAddress.trim()) { setFieldError('Please enter your delivery address.'); return; }
+    if (!form.deliveryWindow) { setFieldError('Please select a delivery window.'); return; }
     setFieldError('');
     setLoading(true);
     try {
@@ -273,6 +277,33 @@ function CheckoutForm({
             onChange={e => setForm(f => ({ ...f, customerEmail: e.target.value }))}
             className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
           />
+        </div>
+
+        {/* Friday delivery info + window selector */}
+        <div className="rounded-lg border border-accent/30 bg-accent/5 p-3.5 space-y-3">
+          <div className="flex items-start gap-2">
+            <span className="text-base mt-0.5">🚚</span>
+            <div>
+              <p className="text-xs font-bold text-foreground uppercase tracking-wide mb-1">Friday Delivery Schedule</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                All orders deliver on <strong>Fridays</strong>. Select your preferred window — exact times may vary by route. We'll confirm your approximate time by <strong>Thursday evening</strong>.
+              </p>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
+              Delivery Window *
+            </label>
+            <select
+              value={form.deliveryWindow}
+              onChange={e => setForm(f => ({ ...f, deliveryWindow: e.target.value }))}
+              className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all cursor-pointer"
+            >
+              <option value="">Select a time window...</option>
+              <option value="10 a.m. – 1 p.m.">10 a.m. – 1 p.m.</option>
+              <option value="1 p.m. – 4 p.m.">1 p.m. – 4 p.m.</option>
+            </select>
+          </div>
         </div>
 
         <div>

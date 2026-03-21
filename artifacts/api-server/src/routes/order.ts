@@ -41,6 +41,7 @@ interface OrderBody {
   customerPhone: string;
   customerEmail?: string;
   deliveryAddress?: string;
+  deliveryWindow?: string;
   allergies?: string;
   deliveryType: string;
   note?: string;
@@ -49,7 +50,7 @@ interface OrderBody {
 }
 
 function formatOrderMessage(order: OrderBody & { orderNumber: string }): string {
-  const { customerName, customerPhone, customerEmail, deliveryAddress, allergies, items, note, orderNumber } = order;
+  const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryWindow, allergies, items, note, orderNumber } = order;
 
   const itemList = items
     .map(item => {
@@ -77,7 +78,8 @@ function formatOrderMessage(order: OrderBody & { orderNumber: string }): string 
     customerEmail ? `📧 Email: ${customerEmail}` : '',
     deliveryAddress ? `📍 Address: ${deliveryAddress}` : '',
     `━━━━━━━━━━━━━━━━━━`,
-    `🚗 DELIVERY`,
+    `🚗 DELIVERY — Friday`,
+    deliveryWindow ? `🕐 Window: ${deliveryWindow}` : '',
     `━━━━━━━━━━━━━━━━━━`,
     `ORDER:`,
     itemList,
@@ -90,7 +92,7 @@ function formatOrderMessage(order: OrderBody & { orderNumber: string }): string 
 }
 
 function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string }): string {
-  const { customerName, customerPhone, customerEmail, deliveryAddress, allergies, items, note, orderNumber } = order;
+  const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryWindow, allergies, items, note, orderNumber } = order;
 
   const itemRows = items.map(item => {
     const price = Number(String(item.price).replace(/[^0-9.]/g, ''));
@@ -120,7 +122,8 @@ function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string }): string
         <tr><td style="padding:5px 0;color:#666;font-size:13px;">📞 Phone</td><td style="padding:5px 0;font-weight:600;">${customerPhone}</td></tr>
         ${customerEmail ? `<tr><td style="padding:5px 0;color:#666;font-size:13px;">📧 Email</td><td style="padding:5px 0;font-weight:600;">${customerEmail}</td></tr>` : ''}
         ${deliveryAddress ? `<tr><td style="padding:5px 0;color:#666;font-size:13px;">📍 Address</td><td style="padding:5px 0;font-weight:600;">${deliveryAddress}</td></tr>` : ''}
-        <tr><td style="padding:5px 0;color:#666;font-size:13px;">🚗 Type</td><td style="padding:5px 0;font-weight:600;">Delivery</td></tr>
+        <tr><td style="padding:5px 0;color:#666;font-size:13px;">🚗 Type</td><td style="padding:5px 0;font-weight:600;">Friday Delivery</td></tr>
+        ${deliveryWindow ? `<tr><td style="padding:5px 0;color:#666;font-size:13px;">🕐 Window</td><td style="padding:5px 0;font-weight:600;">${deliveryWindow}</td></tr>` : ''}
       </table>
       <h3 style="margin:0 0 12px;font-size:14px;text-transform:uppercase;letter-spacing:0.05em;color:#1a2235;">Order Details</h3>
       <table style="width:100%;border-collapse:collapse;font-size:14px;">
