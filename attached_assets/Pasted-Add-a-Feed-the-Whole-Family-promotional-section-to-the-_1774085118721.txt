@@ -1,0 +1,117 @@
+Add a "Feed the Whole Family" promotional section to the Reigns Kitchen app that matches this design exactly:
+Section Placement
+Insert this section between the promo banner and the meal category tabs so it appears prominently before customers start browsing individual meals.
+
+Visual Design
+
+Dark dramatic background — use a deep charcoal/espresso texture or dark gradient (#1a1a1a to #2d1f0e)
+Left side — food photography grid showing meal prep containers (use this Unsplash image or similar dark moody food photo): https://images.unsplash.com/photo-1611599537845-1c7aca0091c0?w=600
+Right side — text content
+Full width section, min height 500px on desktop, stacked on mobile
+
+
+Text Content (right side)
+[Gold pill badge]: NEW!
+
+Feed the
+Whole Family
+
+Starting at $54.99
+
+Chef-crafted meals feeding up to 4 people.
+Ready to heat and serve!
+
+[Gold CTA button]: ORDER FAMILY MEALS →
+
+[Small italic text]: Limited weekly availability
+
+Styling Details
+css/* Badge */
+background: #c9a84c;
+color: #1a1a1a;
+font-weight: 700;
+border-radius: 20px;
+padding: 4px 14px;
+font-size: 13px;
+text-transform: uppercase;
+
+/* Main headline */
+font-family: 'Playfair Display', serif;
+font-size: clamp(2rem, 5vw, 3.5rem);
+font-weight: 700;
+color: #ffffff;
+line-height: 1.1;
+
+/* Price */
+color: #c9a84c;
+font-size: clamp(1.5rem, 3vw, 2rem);
+font-weight: 700;
+
+/* Description */
+color: #d4d4d4;
+font-size: 1rem;
+line-height: 1.6;
+max-width: 380px;
+
+/* CTA Button */
+background: #c9a84c;
+color: #1a1a1a;
+font-weight: 800;
+padding: 16px 32px;
+border-radius: 8px;
+font-size: 1rem;
+letter-spacing: 0.05em;
+border: none;
+cursor: pointer;
+transition: background 0.2s ease;
+
+/* Limited availability text */
+color: #c9a84c;
+font-style: italic;
+font-size: 0.9rem;
+margin-top: 8px;
+
+CTA Button Behaviour
+When customer clicks "ORDER FAMILY MEALS →":
+
+Smoothly scroll down to the Family Meals category section
+Highlight/activate the Family Meals tab in the category tab bar
+
+jsdocument.getElementById('submit-btn').addEventListener('click', () => {
+  // Activate family meals tab
+  document.querySelector('[data-category="family"]').click();
+  
+  // Smooth scroll to family meals section
+  document.getElementById('family').scrollIntoView({ 
+    behavior: 'smooth',
+    block: 'start'
+  });
+});
+
+Mobile Responsive
+css@media (max-width: 768px) {
+  .family-banner {
+    flex-direction: column;
+  }
+  .family-banner-image {
+    width: 100%;
+    height: 280px;
+    object-fit: cover;
+  }
+  .family-banner-content {
+    padding: 32px 24px;
+  }
+}
+```
+
+---
+
+### Also Add Inside the Family Meals Category Section
+Just below the **"Family Meals"** section heading, add this pricing info bar:
+```
+┌─────────────────────────────────────────────┐
+│  1 Meal $54.99  │  2 Meals $99.99  │  3 Meals $139.99  │
+│  Chef-crafted, ready-to-heat meals designed for sharing  │
+│  "Skip cooking this week — let us feed the whole family" │
+└─────────────────────────────────────────────┘
+Style it as a dark navy card with gold text for the prices, cream text for the description, and italic gold for the tagline — matching the style seen in the app screenshot.

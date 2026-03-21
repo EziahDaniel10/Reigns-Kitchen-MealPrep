@@ -42,6 +42,7 @@ export function CategoryNav() {
           {CONFIG.categories.map((cat) => (
             <button
               key={cat.id}
+              data-category={cat.id}
               onClick={() => scrollTo(cat.id)}
               className={cn(
                 "whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-colors cursor-pointer",
