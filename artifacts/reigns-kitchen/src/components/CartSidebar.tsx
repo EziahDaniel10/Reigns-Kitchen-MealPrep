@@ -12,6 +12,7 @@ interface OrderForm {
   customerPhone: string;
   customerEmail: string;
   deliveryAddress: string;
+  allergies: string;
   note: string;
 }
 
@@ -43,6 +44,7 @@ async function submitOrder(
       customerPhone: form.customerPhone,
       customerEmail: form.customerEmail,
       deliveryAddress: form.deliveryAddress,
+      allergies: form.allergies,
       deliveryType: 'Delivery',
       note: form.note,
       items: orderItems,
@@ -183,6 +185,7 @@ function CheckoutForm({
     customerPhone: '',
     customerEmail: '',
     deliveryAddress: '',
+    allergies: '',
     note: '',
   });
   const [loading, setLoading] = useState(false);
@@ -274,10 +277,23 @@ function CheckoutForm({
 
         <div>
           <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
+            Allergies / Special Instructions <span className="text-muted-foreground font-normal normal-case">(optional)</span>
+          </label>
+          <textarea
+            placeholder="e.g. nut allergy, no dairy, gluten-free..."
+            value={form.allergies}
+            onChange={e => setForm(f => ({ ...f, allergies: e.target.value }))}
+            rows={2}
+            className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all resize-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
             Special Note <span className="text-muted-foreground font-normal normal-case">(optional)</span>
           </label>
           <textarea
-            placeholder="Allergies, substitutions, preferences..."
+            placeholder="Any other notes..."
             value={form.note}
             onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
             rows={3}

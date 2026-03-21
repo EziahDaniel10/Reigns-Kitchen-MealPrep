@@ -41,6 +41,7 @@ interface OrderBody {
   customerPhone: string;
   customerEmail?: string;
   deliveryAddress?: string;
+  allergies?: string;
   deliveryType: string;
   note?: string;
   items: OrderItem[];
@@ -48,7 +49,7 @@ interface OrderBody {
 }
 
 function formatOrderMessage(order: OrderBody & { orderNumber: string }): string {
-  const { customerName, customerPhone, customerEmail, deliveryAddress, items, note, orderNumber } = order;
+  const { customerName, customerPhone, customerEmail, deliveryAddress, allergies, items, note, orderNumber } = order;
 
   const itemList = items
     .map(item => {
@@ -82,13 +83,14 @@ function formatOrderMessage(order: OrderBody & { orderNumber: string }): string 
     itemList,
     `━━━━━━━━━━━━━━━━━━`,
     `💰 TOTAL: $${grandTotal}`,
+    allergies ? `⚠️ Allergies: ${allergies}` : '',
     note ? `📝 Note: ${note}` : '',
     `━━━━━━━━━━━━━━━━━━`,
   ].filter(Boolean).join('\n');
 }
 
 function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string }): string {
-  const { customerName, customerPhone, customerEmail, deliveryAddress, items, note, orderNumber } = order;
+  const { customerName, customerPhone, customerEmail, deliveryAddress, allergies, items, note, orderNumber } = order;
 
   const itemRows = items.map(item => {
     const price = Number(String(item.price).replace(/[^0-9.]/g, ''));
@@ -128,7 +130,8 @@ function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string }): string
           <td style="padding:12px 0 0;text-align:right;font-weight:700;font-size:15px;color:#1a2235;">$${grandTotal}</td>
         </tr>
       </table>
-      ${note ? `<div style="margin-top:16px;padding:12px;background:#f9f7f0;border-radius:8px;font-size:13px;color:#555;">📝 <strong>Note:</strong> ${note}</div>` : ''}
+      ${allergies ? `<div style="margin-top:16px;padding:12px;background:#fff8e1;border-left:4px solid #c9a84c;border-radius:8px;font-size:13px;color:#555;">⚠️ <strong>Allergies / Special Instructions:</strong> ${allergies}</div>` : ''}
+      ${note ? `<div style="margin-top:12px;padding:12px;background:#f9f7f0;border-radius:8px;font-size:13px;color:#555;">📝 <strong>Note:</strong> ${note}</div>` : ''}
     </div>
   </div>
 </body></html>`;
