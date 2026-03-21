@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getUncachableResendClient } from '../lib/resend.js';
+import { getResendClient } from '../lib/resend.js';
 
 const router = Router();
 
@@ -190,7 +190,7 @@ async function sendEmails(order: OrderBody & { orderNumber: string }): Promise<v
   }
 
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    const { client, fromEmail } = getResendClient();
     const from = `Reigns Kitchen <${fromEmail}>`;
 
     // Owner backup notification (always sent)
