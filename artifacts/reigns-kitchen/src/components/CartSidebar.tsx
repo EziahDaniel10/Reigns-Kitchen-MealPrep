@@ -7,6 +7,8 @@ import { CONFIG } from '@/data/menu';
 
 type Screen = 'cart' | 'checkout' | 'success' | 'error';
 
+const DELIVERY_FEE = 12;
+
 interface OrderForm {
   customerName: string;
   customerPhone: string;
@@ -28,11 +30,12 @@ async function submitOrder(
     price: Number(String(item.price).replace(/[^0-9.]/g, '')),
   }));
 
-  const total = orderItems.reduce((sum, i) => {
+  const itemsTotal = orderItems.reduce((sum, i) => {
     const cleanPrice = Number(String(i.price).replace(/[^0-9.]/g, ''));
     const cleanQty = parseInt(String(i.qty), 10);
     return sum + (cleanPrice * cleanQty);
-  }, 0).toFixed(2);
+  }, 0);
+  const total = (itemsTotal + DELIVERY_FEE).toFixed(2);
 
   console.log('Cart items being submitted:', JSON.stringify(orderItems));
   console.log('Total being submitted:', total);
@@ -48,6 +51,7 @@ async function submitOrder(
       deliveryWindow: form.deliveryWindow,
       allergies: form.allergies,
       deliveryType: 'Delivery',
+      deliveryFee: DELIVERY_FEE,
       note: form.note,
       items: orderItems,
       total,
@@ -155,10 +159,23 @@ function CartItems({ onClose }: { onClose?: () => void }) {
 
       {/* Footer */}
       <div className="p-5 border-t border-border bg-card shrink-0">
-        <div className="flex justify-between items-center mb-3">
-          <span className="text-muted-foreground font-medium">Total</span>
-          <span className="text-xl font-bold text-foreground">{formatPrice(subtotal)}</span>
+        <div className="space-y-1.5 mb-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Subtotal</span>
+            <span className="text-foreground">{formatPrice(subtotal)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Delivery fee</span>
+            <span className="text-foreground">{formatPrice(DELIVERY_FEE)}</span>
+          </div>
+          <div className="flex justify-between pt-1.5 border-t border-border">
+            <span className="font-semibold text-foreground">Total</span>
+            <span className="text-xl font-bold text-foreground">{formatPrice(subtotal + DELIVERY_FEE)}</span>
+          </div>
         </div>
+        <p className="text-xs text-muted-foreground text-center mb-3">
+          Local delivery $12. Additional fees may apply outside local area.
+        </p>
         {!isMinMet && totalMeals > 0 && (
           <div className="text-xs text-amber-600 mb-3 text-center font-medium">
             Minimum 4 meals required to order
@@ -227,9 +244,12 @@ function CheckoutForm({
       </div>
 
       {/* Order summary strip */}
-      <div className="px-5 py-3 bg-muted/60 border-b border-border shrink-0 flex justify-between text-sm">
-        <span className="text-muted-foreground">{totalMeals} meals</span>
-        <span className="font-bold text-foreground">{formatPrice(subtotal)}</span>
+      <div className="px-5 py-3 bg-muted/60 border-b border-border shrink-0">
+        <div className="flex justify-between text-sm mb-1">
+          <span className="text-muted-foreground">{totalMeals} meals + delivery</span>
+          <span className="font-bold text-foreground">{formatPrice(subtotal + DELIVERY_FEE)}</span>
+        </div>
+        <p className="text-xs text-muted-foreground">Incl. $12 local delivery fee</p>
       </div>
 
       {/* Form */}
@@ -316,11 +336,14 @@ function CheckoutForm({
             rows={2}
             className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all resize-none"
           />
+          <p className="mt-2 text-xs text-muted-foreground leading-relaxed bg-muted/40 rounded-md p-2.5">
+            ⚠️ If no allergy or dietary information is provided, the order will be prepared as standard. Reigns Kitchen is not responsible for any allergic reactions or dietary concerns that were not disclosed at the time of ordering. <em>Reigns Kitchen operates in a kitchen that handles common allergens and is not an allergen-free facility.</em>
+          </p>
         </div>
 
         <div>
           <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
-            Special Note <span className="text-muted-foreground font-normal normal-case">(optional)</span>
+            Delivery Instructions <span className="text-muted-foreground font-normal normal-case">(optional)</span>
           </label>
           <textarea
             placeholder="Any other notes..."
@@ -329,6 +352,9 @@ function CheckoutForm({
             rows={3}
             className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all resize-none"
           />
+          <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+            Include gate codes, call box numbers, preferred drop-off location, or instructions (e.g., ring doorbell, leave at door).
+          </p>
         </div>
 
         {fieldError && (
@@ -358,6 +384,9 @@ function CheckoutForm({
         <p className="text-center text-xs text-muted-foreground mt-2">
           {CONFIG.orderDeadline}
         </p>
+        <div className="mt-3 text-xs text-muted-foreground leading-relaxed border-t border-border pt-3 space-y-1">
+          <p>Please provide all necessary delivery details to ensure a smooth delivery. If delivery instructions are not provided, Reigns Kitchen is not responsible for delays or unsuccessful delivery attempts.</p>
+        </div>
       </div>
     </>
   );

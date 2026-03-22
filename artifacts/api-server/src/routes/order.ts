@@ -42,6 +42,7 @@ interface OrderBody {
   customerEmail?: string;
   deliveryAddress?: string;
   deliveryWindow?: string;
+  deliveryFee?: number;
   allergies?: string;
   deliveryType: string;
   note?: string;
@@ -50,7 +51,7 @@ interface OrderBody {
 }
 
 function formatOrderMessage(order: OrderBody & { orderNumber: string }): string {
-  const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryWindow, allergies, items, note, orderNumber } = order;
+  const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryWindow, deliveryFee, allergies, items, note, orderNumber } = order;
 
   const itemList = items
     .map(item => {
@@ -84,6 +85,7 @@ function formatOrderMessage(order: OrderBody & { orderNumber: string }): string 
     `ORDER:`,
     itemList,
     `━━━━━━━━━━━━━━━━━━`,
+    deliveryFee ? `🚗 Delivery Fee: $${deliveryFee.toFixed(2)}` : '',
     `💰 TOTAL: $${grandTotal}`,
     allergies ? `⚠️ Allergies: ${allergies}` : '',
     note ? `📝 Note: ${note}` : '',
@@ -92,7 +94,7 @@ function formatOrderMessage(order: OrderBody & { orderNumber: string }): string 
 }
 
 function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string }): string {
-  const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryWindow, allergies, items, note, orderNumber } = order;
+  const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryWindow, deliveryFee, allergies, items, note, orderNumber } = order;
 
   const itemRows = items.map(item => {
     const price = Number(String(item.price).replace(/[^0-9.]/g, ''));
@@ -104,11 +106,13 @@ function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string }): string
     </tr>`;
   }).join('');
 
-  const grandTotal = items.reduce((sum, item) => {
+  const itemsTotal = items.reduce((sum, item) => {
     const price = Number(String(item.price).replace(/[^0-9.]/g, ''));
     const qty = parseInt(String(item.qty), 10);
     return sum + price * qty;
-  }, 0).toFixed(2);
+  }, 0);
+  const fee = deliveryFee ?? 0;
+  const grandTotal = (itemsTotal + fee).toFixed(2);
 
   return `<!DOCTYPE html><html><body style="font-family:sans-serif;background:#f5f5dc;margin:0;padding:20px;">
   <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
@@ -129,8 +133,12 @@ function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string }): string
       <table style="width:100%;border-collapse:collapse;font-size:14px;">
         ${itemRows}
         <tr>
-          <td colspan="2" style="padding:12px 0 0;font-weight:700;font-size:15px;">Total</td>
-          <td style="padding:12px 0 0;text-align:right;font-weight:700;font-size:15px;color:#1a2235;">$${grandTotal}</td>
+          <td colspan="2" style="padding:8px 0 0;color:#666;">Delivery Fee</td>
+          <td style="padding:8px 0 0;text-align:right;color:#666;">$${fee.toFixed(2)}</td>
+        </tr>
+        <tr>
+          <td colspan="2" style="padding:8px 0 0;font-weight:700;font-size:15px;border-top:1px solid #eee;">Total</td>
+          <td style="padding:8px 0 0;text-align:right;font-weight:700;font-size:15px;color:#1a2235;border-top:1px solid #eee;">$${grandTotal}</td>
         </tr>
       </table>
       ${allergies ? `<div style="margin-top:16px;padding:12px;background:#fff8e1;border-left:4px solid #c9a84c;border-radius:8px;font-size:13px;color:#555;">⚠️ <strong>Allergies / Special Instructions:</strong> ${allergies}</div>` : ''}
@@ -141,7 +149,7 @@ function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string }): string
 }
 
 function buildCustomerEmailHtml(order: OrderBody & { orderNumber: string }): string {
-  const { customerName, items, orderNumber } = order;
+  const { customerName, items, orderNumber, deliveryFee } = order;
 
   const itemRows = items.map(item => {
     const price = Number(String(item.price).replace(/[^0-9.]/g, ''));
@@ -153,11 +161,13 @@ function buildCustomerEmailHtml(order: OrderBody & { orderNumber: string }): str
     </tr>`;
   }).join('');
 
-  const grandTotal = items.reduce((sum, item) => {
+  const itemsTotal2 = items.reduce((sum, item) => {
     const price = Number(String(item.price).replace(/[^0-9.]/g, ''));
     const qty = parseInt(String(item.qty), 10);
     return sum + price * qty;
-  }, 0).toFixed(2);
+  }, 0);
+  const fee2 = deliveryFee ?? 0;
+  const grandTotal = (itemsTotal2 + fee2).toFixed(2);
 
   return `<!DOCTYPE html><html><body style="font-family:sans-serif;background:#f5f5dc;margin:0;padding:20px;">
   <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
@@ -176,8 +186,12 @@ function buildCustomerEmailHtml(order: OrderBody & { orderNumber: string }): str
       <table style="width:100%;border-collapse:collapse;font-size:14px;">
         ${itemRows}
         <tr>
-          <td colspan="2" style="padding:12px 0 0;font-weight:700;font-size:15px;">Total</td>
-          <td style="padding:12px 0 0;text-align:right;font-weight:700;font-size:15px;color:#1a2235;">$${grandTotal}</td>
+          <td colspan="2" style="padding:8px 0 0;color:#666;">Delivery Fee</td>
+          <td style="padding:8px 0 0;text-align:right;color:#666;">$${fee2.toFixed(2)}</td>
+        </tr>
+        <tr>
+          <td colspan="2" style="padding:8px 0 0;font-weight:700;font-size:15px;border-top:1px solid #eee;">Total</td>
+          <td style="padding:8px 0 0;text-align:right;font-weight:700;font-size:15px;color:#1a2235;border-top:1px solid #eee;">$${grandTotal}</td>
         </tr>
       </table>
       <div style="margin-top:24px;padding:14px 16px;background:#f0f9f4;border-radius:8px;font-size:13px;color:#2d6a4f;">
