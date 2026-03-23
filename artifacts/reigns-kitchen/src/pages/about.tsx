@@ -24,7 +24,7 @@ export default function About() {
           <div className="flex flex-col md:flex-row gap-10 md:gap-16 items-start mb-16">
             <div className="w-full md:w-80 shrink-0">
               <img
-                src="/images/chef-hero.jpg"
+                src="/images/chef-hero-2.jpg"
                 alt="Chef April Winston"
                 className="w-full rounded-2xl object-cover shadow-lg"
                 style={{ maxHeight: '420px', objectPosition: 'center top' }}

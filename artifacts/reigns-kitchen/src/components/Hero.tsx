@@ -14,7 +14,7 @@ export function Hero() {
     <div className="relative w-full">
       {/* Full-width hero image — the design lives inside the photo */}
       <img
-        src="/images/chef-hero.jpg"
+        src="/images/chef-hero-2.jpg"
         alt="Chef April Winston — Chef-crafted meals inspired by global flavors"
         className="w-full block"
         style={{ maxHeight: '640px', objectFit: 'cover', objectPosition: 'center center' }}
