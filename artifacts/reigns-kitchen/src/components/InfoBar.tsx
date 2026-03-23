@@ -10,7 +10,7 @@ export function InfoBar() {
     <div className="bg-background border-b border-border w-full">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Deadline info */}
-        <div className="py-3 border-b border-border/50 md:border-0">
+        <div className="py-3 border-b border-border/50">
           <p className="font-bold text-foreground text-xs sm:text-sm">
             Order Deadline: {CONFIG.orderDeadline}
           </p>
@@ -19,9 +19,12 @@ export function InfoBar() {
           </p>
         </div>
 
-        {/* Bundle pills — horizontal scroll on mobile */}
-        <div className="overflow-x-auto no-scrollbar py-3">
-          <div className="flex gap-2 min-w-max">
+        {/* Bundle pills */}
+        <div className="py-3">
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mr-1 shrink-0">
+              Bundle Deals:
+            </span>
             {CONFIG.bundles.map((bundle) => {
               const isActive = activeBundle === bundle.meals;
               return (
@@ -40,12 +43,15 @@ export function InfoBar() {
                   <span className="text-muted-foreground">${bundle.price}</span>
                   {bundle.highlighted && (
                     <span className="bg-accent text-accent-foreground text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                      Popular
+                      {bundle.label}
                     </span>
                   )}
                 </button>
               );
             })}
+            <span className="text-xs text-muted-foreground ml-1 italic">
+              +$3 per Signature meal · Chef's Featured not included
+            </span>
           </div>
         </div>
       </div>

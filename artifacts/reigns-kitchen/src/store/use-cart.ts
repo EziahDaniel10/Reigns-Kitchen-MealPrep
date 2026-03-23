@@ -28,7 +28,7 @@ interface CartState {
 
 export const useCart = create<CartState>((set, get) => ({
   items: {},
-  
+
   addItem: (item) => set((state) => {
     const existing = state.items[item.id];
     if (existing) {
@@ -57,7 +57,6 @@ export const useCart = create<CartState>((set, get) => ({
       const { [id]: _, ...rest } = state.items;
       return { items: rest };
     }
-    
     return {
       items: {
         ...state.items,
@@ -79,8 +78,8 @@ export const useCart = create<CartState>((set, get) => ({
   getBundleProgress: () => {
     const totalMeals = get().getTotalItems();
     const isMinMet = totalMeals >= 4;
-    const bundles = [4, 5, 8, 10];
-    
+    const bundles = [5, 10];
+
     let nextBundle: number | null = null;
     for (const b of bundles) {
       if (totalMeals < b) {
@@ -88,9 +87,9 @@ export const useCart = create<CartState>((set, get) => ({
         break;
       }
     }
-    
+
     const mealsNeeded = nextBundle ? nextBundle - totalMeals : 0;
-    
+
     return { totalMeals, nextBundle, mealsNeeded, isMinMet };
   }
 }));

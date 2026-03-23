@@ -59,7 +59,15 @@ export function MealCard({ item, itemIndex, isFamily }: MealCardProps) {
         
         {item.tag && (
           <div>
-            <span className="inline-block border border-accent text-accent text-[10px] font-bold px-2 py-0.5 rounded-full mt-1">
+            <span
+              className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 ${
+                item.tag === "Chef's Featured"
+                  ? "bg-[#c9a84c] text-[#1a1a1a]"
+                  : item.tag === "Signature"
+                  ? "border border-[#c9a84c] text-[#c9a84c]"
+                  : "border border-accent text-accent"
+              }`}
+            >
               {item.tag}
             </span>
           </div>

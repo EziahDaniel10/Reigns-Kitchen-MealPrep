@@ -64,7 +64,7 @@ export function FamilyBanner() {
               fontSize: 'clamp(1.5rem, 3vw, 2rem)',
             }}
           >
-            Starting at $54.99
+            Starting at $49.99
           </p>
 
           {/* Description */}
