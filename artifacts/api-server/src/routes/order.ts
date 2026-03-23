@@ -41,6 +41,7 @@ interface OrderBody {
   customerPhone: string;
   customerEmail?: string;
   deliveryAddress?: string;
+  deliveryDate?: string;
   deliveryWindow?: string;
   deliveryFee?: number;
   allergies?: string;
@@ -51,7 +52,7 @@ interface OrderBody {
 }
 
 function formatOrderMessage(order: OrderBody & { orderNumber: string }): string {
-  const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryWindow, deliveryFee, allergies, items, note, orderNumber } = order;
+  const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryDate, deliveryWindow, deliveryFee, allergies, items, note, orderNumber } = order;
 
   const itemList = items
     .map(item => {
@@ -80,6 +81,7 @@ function formatOrderMessage(order: OrderBody & { orderNumber: string }): string 
     deliveryAddress ? `📍 Address: ${deliveryAddress}` : '',
     `━━━━━━━━━━━━━━━━━━`,
     `🚗 DELIVERY — Friday`,
+    deliveryDate ? `📅 Date: ${deliveryDate}` : '',
     deliveryWindow ? `🕐 Window: ${deliveryWindow}` : '',
     `━━━━━━━━━━━━━━━━━━`,
     `ORDER:`,
@@ -94,7 +96,7 @@ function formatOrderMessage(order: OrderBody & { orderNumber: string }): string 
 }
 
 function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string }): string {
-  const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryWindow, deliveryFee, allergies, items, note, orderNumber } = order;
+  const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryDate, deliveryWindow, deliveryFee, allergies, items, note, orderNumber } = order;
 
   const itemRows = items.map(item => {
     const price = Number(String(item.price).replace(/[^0-9.]/g, ''));
@@ -127,6 +129,7 @@ function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string }): string
         ${customerEmail ? `<tr><td style="padding:5px 0;color:#666;font-size:13px;">📧 Email</td><td style="padding:5px 0;font-weight:600;">${customerEmail}</td></tr>` : ''}
         ${deliveryAddress ? `<tr><td style="padding:5px 0;color:#666;font-size:13px;">📍 Address</td><td style="padding:5px 0;font-weight:600;">${deliveryAddress}</td></tr>` : ''}
         <tr><td style="padding:5px 0;color:#666;font-size:13px;">🚗 Type</td><td style="padding:5px 0;font-weight:600;">Friday Delivery</td></tr>
+        ${deliveryDate ? `<tr><td style="padding:5px 0;color:#666;font-size:13px;">📅 Delivery Date</td><td style="padding:5px 0;font-weight:600;">${deliveryDate}</td></tr>` : ''}
         ${deliveryWindow ? `<tr><td style="padding:5px 0;color:#666;font-size:13px;">🕐 Window</td><td style="padding:5px 0;font-weight:600;">${deliveryWindow}</td></tr>` : ''}
       </table>
       <h3 style="margin:0 0 12px;font-size:14px;text-transform:uppercase;letter-spacing:0.05em;color:#1a2235;">Order Details</h3>
@@ -149,7 +152,7 @@ function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string }): string
 }
 
 function buildCustomerEmailHtml(order: OrderBody & { orderNumber: string }): string {
-  const { customerName, items, orderNumber, deliveryFee } = order;
+  const { customerName, items, orderNumber, deliveryFee, deliveryDate, deliveryWindow } = order;
 
   const itemRows = items.map(item => {
     const price = Number(String(item.price).replace(/[^0-9.]/g, ''));
@@ -195,7 +198,9 @@ function buildCustomerEmailHtml(order: OrderBody & { orderNumber: string }): str
         </tr>
       </table>
       <div style="margin-top:24px;padding:14px 16px;background:#f0f9f4;border-radius:8px;font-size:13px;color:#2d6a4f;">
-        🚗 Fresh delivery every Friday. We'll be in touch to confirm your details!
+        📅 <strong>Delivery Date:</strong> ${deliveryDate || 'Friday (to be confirmed)'}<br/>
+        ${deliveryWindow ? `🕐 <strong>Window:</strong> ${deliveryWindow}<br/>` : ''}
+        We'll be in touch to confirm your delivery details!
       </div>
     </div>
     <div style="padding:16px 28px;background:#f9f7f0;text-align:center;">

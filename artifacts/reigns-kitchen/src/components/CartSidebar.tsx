@@ -9,11 +9,48 @@ type Screen = 'cart' | 'checkout' | 'success' | 'error';
 
 const DELIVERY_FEE = 12;
 
+function getDeliveryInfo() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
+
+  // Cutoff = the next coming Friday (0 days away if today IS Friday).
+  // Delivery = cutoff + 7 days (always exactly 1 week after cutoff).
+  // This means:
+  //   Mon–Fri → cutoff = this Friday, delivery = following Friday
+  //   Sat–Sun → cutoff = next Friday, delivery = the Friday after that
+  const daysToNextFriday = (5 - dayOfWeek + 7) % 7; // 0 when today is Friday
+
+  const cutoffDate = new Date(today);
+  cutoffDate.setDate(today.getDate() + daysToNextFriday);
+
+  const deliveryDate = new Date(cutoffDate);
+  deliveryDate.setDate(cutoffDate.getDate() + 7);
+
+  const fmt = (d: Date) =>
+    d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const fmtShort = (d: Date) =>
+    d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+  const todayIsCutoffDay = dayOfWeek === 5; // Friday = cutoff day
+
+  return {
+    deliveryDate,
+    cutoffDate,
+    deliveryLabel: fmt(deliveryDate),
+    cutoffLabel: fmt(cutoffDate),
+    cutoffShort: fmtShort(cutoffDate),
+    deliveryISODate: deliveryDate.toISOString().split('T')[0],
+    todayIsCutoffDay,
+  };
+}
+
 interface OrderForm {
   customerName: string;
   customerPhone: string;
   customerEmail: string;
   deliveryAddress: string;
+  deliveryDate: string;
   deliveryWindow: string;
   allergies: string;
   note: string;
@@ -48,6 +85,7 @@ async function submitOrder(
       customerPhone: form.customerPhone,
       customerEmail: form.customerEmail,
       deliveryAddress: form.deliveryAddress,
+      deliveryDate: form.deliveryDate,
       deliveryWindow: form.deliveryWindow,
       allergies: form.allergies,
       deliveryType: 'Delivery',
@@ -199,11 +237,14 @@ function CheckoutForm({
   const { totalMeals } = getBundleProgress();
   const subtotal = getSubtotal();
 
+  const deliveryInfo = getDeliveryInfo();
+
   const [form, setForm] = useState<OrderForm>({
     customerName: '',
     customerPhone: '',
     customerEmail: '',
     deliveryAddress: '',
+    deliveryDate: deliveryInfo.deliveryLabel,
     deliveryWindow: '',
     allergies: '',
     note: '',
@@ -298,17 +339,40 @@ function CheckoutForm({
           />
         </div>
 
-        {/* Friday delivery info + window selector */}
+        {/* Delivery Date + Window */}
         <div className="rounded-lg border border-accent/30 bg-accent/5 p-3.5 space-y-3">
-          <div className="flex items-start gap-2">
-            <span className="text-base mt-0.5">🚚</span>
-            <div>
-              <p className="text-xs font-bold text-foreground uppercase tracking-wide mb-1">Friday Delivery Schedule</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                All orders deliver on <strong>Fridays</strong>. Select your preferred window — exact times may vary by route. We'll confirm your approximate time by <strong>Thursday evening</strong>.
-              </p>
+          <p className="text-xs font-bold text-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <span>📅</span> Delivery Schedule
+          </p>
+
+          {/* Delivery date — auto-calculated, read-only */}
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
+              Delivery Date
+            </label>
+            <div className="w-full border border-accent/50 rounded-lg px-3 py-2.5 bg-background flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-foreground">{deliveryInfo.deliveryLabel}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Friday deliveries only · 1 week out</p>
+              </div>
+              <span className="text-green-600 font-bold text-base">✓</span>
             </div>
           </div>
+
+          {/* Cutoff notice */}
+          <div className={`rounded-md px-3 py-2 text-xs leading-relaxed ${deliveryInfo.todayIsCutoffDay ? 'bg-amber-50 border border-amber-200 text-amber-800' : 'bg-muted/60 text-muted-foreground'}`}>
+            {deliveryInfo.todayIsCutoffDay ? (
+              <>
+                <strong>⚠️ Today is the order cutoff.</strong> Orders placed today will be delivered on <strong>{deliveryInfo.deliveryLabel}</strong>.
+              </>
+            ) : (
+              <>
+                <strong>Order cutoff:</strong> {deliveryInfo.cutoffLabel} — place your order by then to receive delivery on {deliveryInfo.deliveryLabel}.
+              </>
+            )}
+          </div>
+
+          {/* Time window */}
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
               Delivery Window *
@@ -322,6 +386,7 @@ function CheckoutForm({
               <option value="10 a.m. – 1 p.m.">10 a.m. – 1 p.m.</option>
               <option value="1 p.m. – 4 p.m.">1 p.m. – 4 p.m.</option>
             </select>
+            <p className="mt-1.5 text-xs text-muted-foreground">We'll confirm your approximate time by <strong>Thursday evening</strong>.</p>
           </div>
         </div>
 
