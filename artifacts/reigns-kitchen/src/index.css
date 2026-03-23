@@ -96,3 +96,46 @@ html {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ── react-day-picker: Reigns Kitchen brand theme ─────────────── */
+.rk-calendar .rdp-root {
+  --rdp-accent-color: #c9a84c;
+  --rdp-accent-background-color: #1a2235;
+  --rdp-selected-border: 2px solid #c9a84c;
+  font-size: 0.8rem;
+  width: 100%;
+}
+.rk-calendar .rdp-month_caption {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  color: #1a2235;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+.rk-calendar .rdp-day_button {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+}
+.rk-calendar .rdp-selected .rdp-day_button {
+  background-color: #1a2235;
+  color: #FFD700;
+  font-weight: 700;
+  border: 2px solid #c9a84c;
+}
+.rk-calendar .rdp-disabled .rdp-day_button {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+/* Highlight the only enabled Friday */
+.rk-calendar .rdp-day:not(.rdp-disabled) .rdp-day_button:not([aria-selected='true']) {
+  border: 2px solid #c9a84c;
+  color: #1a2235;
+  font-weight: 700;
+  background-color: #fffbea;
+}
+.rk-calendar .rdp-weekday {
+  font-size: 0.7rem;
+  color: #666;
+}

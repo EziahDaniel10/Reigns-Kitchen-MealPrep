@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag, Plus, Minus, Trash2, X, ChevronLeft, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { DayPicker } from 'react-day-picker';
+import 'react-day-picker/style.css';
 import { useCart } from '@/store/use-cart';
 import { formatPrice } from '@/lib/utils';
 import { CONFIG } from '@/data/menu';
@@ -9,40 +11,16 @@ type Screen = 'cart' | 'checkout' | 'success' | 'error';
 
 const DELIVERY_FEE = 12;
 
-function getDeliveryInfo() {
+function getMinDeliveryFriday(): Date {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
-
-  // Cutoff = the next coming Friday (0 days away if today IS Friday).
-  // Delivery = cutoff + 7 days (always exactly 1 week after cutoff).
-  // This means:
-  //   Mon–Fri → cutoff = this Friday, delivery = following Friday
-  //   Sat–Sun → cutoff = next Friday, delivery = the Friday after that
-  const daysToNextFriday = (5 - dayOfWeek + 7) % 7; // 0 when today is Friday
-
-  const cutoffDate = new Date(today);
-  cutoffDate.setDate(today.getDate() + daysToNextFriday);
-
-  const deliveryDate = new Date(cutoffDate);
-  deliveryDate.setDate(cutoffDate.getDate() + 7);
-
-  const fmt = (d: Date) =>
-    d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-  const fmtShort = (d: Date) =>
-    d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-
-  const todayIsCutoffDay = dayOfWeek === 5; // Friday = cutoff day
-
-  return {
-    deliveryDate,
-    cutoffDate,
-    deliveryLabel: fmt(deliveryDate),
-    cutoffLabel: fmt(cutoffDate),
-    cutoffShort: fmtShort(cutoffDate),
-    deliveryISODate: deliveryDate.toISOString().split('T')[0],
-    todayIsCutoffDay,
-  };
+  const dayOfWeek = today.getDay(); // 0=Sun…5=Fri…6=Sat
+  // If today is Friday same-day delivery is not allowed, so skip to next Friday.
+  // Otherwise find the next coming Friday (1–6 days away).
+  const daysUntilFriday = dayOfWeek === 5 ? 7 : (5 - dayOfWeek + 7) % 7;
+  const friday = new Date(today);
+  friday.setDate(today.getDate() + daysUntilFriday);
+  return friday;
 }
 
 interface OrderForm {
@@ -237,18 +215,32 @@ function CheckoutForm({
   const { totalMeals } = getBundleProgress();
   const subtotal = getSubtotal();
 
-  const deliveryInfo = getDeliveryInfo();
+  const minFriday = getMinDeliveryFriday();
+  const isCutoffDay = new Date().getDay() === 5;
 
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [form, setForm] = useState<OrderForm>({
     customerName: '',
     customerPhone: '',
     customerEmail: '',
     deliveryAddress: '',
-    deliveryDate: deliveryInfo.deliveryLabel,
+    deliveryDate: '',
     deliveryWindow: '',
     allergies: '',
     note: '',
   });
+
+  const handleDateSelect = (date: Date | undefined) => {
+    setSelectedDate(date);
+    if (date) {
+      const label = date.toLocaleDateString('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+      });
+      setForm(f => ({ ...f, deliveryDate: label }));
+    } else {
+      setForm(f => ({ ...f, deliveryDate: '' }));
+    }
+  };
   const [loading, setLoading] = useState(false);
   const [fieldError, setFieldError] = useState('');
 
@@ -256,6 +248,7 @@ function CheckoutForm({
     if (!form.customerName.trim()) { setFieldError('Please enter your name.'); return; }
     if (!form.customerPhone.trim()) { setFieldError('Please enter your phone number.'); return; }
     if (!form.deliveryAddress.trim()) { setFieldError('Please enter your delivery address.'); return; }
+    if (!form.deliveryDate) { setFieldError('Please select a delivery date.'); return; }
     if (!form.deliveryWindow) { setFieldError('Please select a delivery window.'); return; }
     if (!form.customerEmail.trim()) { setFieldError('Please enter your email address.'); return; }
     setFieldError('');
@@ -342,35 +335,41 @@ function CheckoutForm({
         {/* Delivery Date + Window */}
         <div className="rounded-lg border border-accent/30 bg-accent/5 p-3.5 space-y-3">
           <p className="text-xs font-bold text-foreground uppercase tracking-wide flex items-center gap-1.5">
-            <span>📅</span> Delivery Schedule
+            <span>📅</span> Delivery Date *
           </p>
 
-          {/* Delivery date — auto-calculated, read-only */}
-          <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
-              Delivery Date
-            </label>
-            <div className="w-full border border-accent/50 rounded-lg px-3 py-2.5 bg-background flex items-center justify-between">
-              <div>
-                <p className="text-sm font-bold text-foreground">{deliveryInfo.deliveryLabel}</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Friday deliveries only · 1 week out</p>
-              </div>
-              <span className="text-green-600 font-bold text-base">✓</span>
+          {/* Cutoff notice */}
+          {isCutoffDay && (
+            <div className="rounded-md px-3 py-2 text-xs leading-relaxed bg-amber-50 border border-amber-200 text-amber-800">
+              <strong>⚠️ Today is the order cutoff (Friday).</strong> Same-day delivery is not available — please select next Friday below.
             </div>
+          )}
+
+          {/* Calendar picker */}
+          <div className="rk-calendar flex justify-center">
+            <DayPicker
+              mode="single"
+              selected={selectedDate}
+              onSelect={handleDateSelect}
+              defaultMonth={minFriday}
+              disabled={[
+                { before: minFriday },
+                { after: minFriday },
+                (d: Date) => d.getDay() !== 5,
+              ]}
+            />
           </div>
 
-          {/* Cutoff notice */}
-          <div className={`rounded-md px-3 py-2 text-xs leading-relaxed ${deliveryInfo.todayIsCutoffDay ? 'bg-amber-50 border border-amber-200 text-amber-800' : 'bg-muted/60 text-muted-foreground'}`}>
-            {deliveryInfo.todayIsCutoffDay ? (
-              <>
-                <strong>⚠️ Today is the order cutoff.</strong> Orders placed today will be delivered on <strong>{deliveryInfo.deliveryLabel}</strong>.
-              </>
-            ) : (
-              <>
-                <strong>Order cutoff:</strong> {deliveryInfo.cutoffLabel} — place your order by then to receive delivery on {deliveryInfo.deliveryLabel}.
-              </>
-            )}
-          </div>
+          {selectedDate && (
+            <div className="flex items-center gap-2 rounded-md bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-800">
+              <span className="font-bold text-base">✓</span>
+              <span>Delivery: <strong>{form.deliveryDate}</strong></span>
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Deliveries every Friday. Same-day orders not accepted. The next available date is highlighted above.
+          </p>
 
           {/* Time window */}
           <div>
