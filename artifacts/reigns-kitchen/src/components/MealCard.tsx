@@ -5,18 +5,43 @@ import { type CategoryItem } from '@/data/menu';
 import { useCart } from '@/store/use-cart';
 import { formatPrice } from '@/lib/utils';
 
-const FOOD_PHOTOS = [
-  "photo-1546069901-ba9599a7e63c",
-  "photo-1565299585323-38d6b0865b47",  
+const FALLBACK_PHOTOS = [
+  "photo-1547592180-85f173990554",
+  "photo-1565299585323-38d6b0865b47",
   "photo-1519708227418-c8fd9a32b7a2",
   "photo-1567620905732-2d1ec7ab7445",
   "photo-1512621776951-a57141f2eefd",
-  "photo-1490645935967-10de6ba17061",
-  "photo-1484723091739-30a097e8f929",
-  "photo-1555949258-eb67b1ef0ceb",
-  "photo-1547592180-85f173990554",
   "photo-1504674900247-0877df9cc836"
 ];
+
+const MEAL_PHOTOS: Record<string, string> = {
+  // Standard Meals
+  "braised-turkey-wings":    "photo-1548943487-a2e4e43b4853",
+  "jerk-chicken-lasagna":    "photo-1574894709920-11b28e7367e3",
+  "grilled-chicken-parm":    "photo-1632778149955-e80f8ceca2e8",
+  "peruvian-chicken-bowl":   "photo-1512058564366-18510be2db19",
+  "creole-chicken-bowl":     "photo-1604908176997-125f25cc6f3d",
+  "vegan-lasagna":           "photo-1621996346565-e3dbc646d9a9",
+  "mushroom-steak-bowl":     "photo-1504544750208-dc0358e63f7f",
+  // Signature Meals
+  "southern-salmon-cakes":   "photo-1519708227418-c8fd9a32b7a2",
+  "cajun-shrimp-grits":      "photo-1571091718767-18b5b1457add",
+  "cajun-salmon-bowl":       "photo-1467003909585-2f8a72700288",
+  // Chef's Featured
+  "lobster-herb-rice":       "photo-1553361371-9b22f78e8b1d",
+  "lamb-chops-mash":         "photo-1529694157872-4e0c0f3b238b",
+  "surf-turf-special":       "photo-1558030006-450675393462",
+  // Breakfast
+  "suya-steak-eggs":         "photo-1482049016688-2d3e1b311543",
+  "mini-pancake-plate":      "photo-1567620905732-2d1ec7ab7445",
+  "greek-yogurt-parfait":    "photo-1488477181946-6428a0291777",
+  "chia-power-parfait":      "photo-1490474418585-ba9bad8fd0ea",
+  // Family Meals
+  "turkey-wings-family":     "photo-1548943487-a2e4e43b4853",
+  "jerk-chicken-family":     "photo-1574894709920-11b28e7367e3",
+  "chicken-parm-family":     "photo-1555949258-eb67b1ef0ceb",
+  "cajun-shrimp-family":     "photo-1571091718767-18b5b1457add",
+};
 
 interface MealCardProps {
   item: CategoryItem;
@@ -29,7 +54,7 @@ export function MealCard({ item, itemIndex, isFamily }: MealCardProps) {
   const cartItem = items[item.id];
   const quantity = cartItem?.quantity || 0;
 
-  const photoId = FOOD_PHOTOS[itemIndex % FOOD_PHOTOS.length];
+  const photoId = MEAL_PHOTOS[item.id] ?? FALLBACK_PHOTOS[itemIndex % FALLBACK_PHOTOS.length];
   const photoUrl = `https://images.unsplash.com/${photoId}?w=400&h=280&fit=crop&q=80`;
 
   const handleAdd = () => {
