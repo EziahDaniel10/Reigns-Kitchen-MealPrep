@@ -10,6 +10,7 @@ import { CONFIG } from '@/data/menu';
 type Screen = 'cart' | 'checkout' | 'success' | 'error';
 
 const DELIVERY_FEE = 12;
+const TAX_RATE = 0.06;
 
 function getMinDeliveryFriday(): Date {
   const today = new Date();
@@ -37,7 +38,10 @@ interface OrderForm {
 async function submitOrder(
   form: OrderForm,
   items: ReturnType<typeof useCart>['items'],
-  subtotal: number
+  subtotal: number,
+  deliveryFee: number,
+  tax: number,
+  deliveryType: 'delivery' | 'pickup',
 ): Promise<{ success: boolean; orderNumber?: string; error?: string }> {
   const orderItems = Object.values(items).map(item => ({
     name: item.name,
@@ -50,10 +54,7 @@ async function submitOrder(
     const cleanQty = parseInt(String(i.qty), 10);
     return sum + (cleanPrice * cleanQty);
   }, 0);
-  const total = (itemsTotal + DELIVERY_FEE).toFixed(2);
-
-  console.log('Cart items being submitted:', JSON.stringify(orderItems));
-  console.log('Total being submitted:', total);
+  const total = (itemsTotal + deliveryFee + tax).toFixed(2);
 
   const res = await fetch('/api/send-order', {
     method: 'POST',
@@ -62,12 +63,13 @@ async function submitOrder(
       customerName: form.customerName,
       customerPhone: form.customerPhone,
       customerEmail: form.customerEmail,
-      deliveryAddress: form.deliveryAddress,
-      deliveryDate: form.deliveryDate,
-      deliveryWindow: form.deliveryWindow,
+      deliveryAddress: deliveryType === 'delivery' ? form.deliveryAddress : undefined,
+      deliveryDate: deliveryType === 'delivery' ? form.deliveryDate : undefined,
+      deliveryWindow: deliveryType === 'delivery' ? form.deliveryWindow : undefined,
       allergies: form.allergies,
-      deliveryType: 'Delivery',
-      deliveryFee: DELIVERY_FEE,
+      deliveryType: deliveryType === 'delivery' ? 'Delivery' : 'Pickup',
+      deliveryFee,
+      tax,
       note: form.note,
       items: orderItems,
       total,
@@ -78,7 +80,19 @@ async function submitOrder(
   return data;
 }
 
-function CartItems({ onClose }: { onClose?: () => void }) {
+function CartItems({
+  onClose,
+  deliveryType,
+  setDeliveryType,
+  deliveryFee,
+  tax,
+}: {
+  onClose?: () => void;
+  deliveryType: 'delivery' | 'pickup';
+  setDeliveryType: (t: 'delivery' | 'pickup') => void;
+  deliveryFee: number;
+  tax: number;
+}) {
   const { items, getSubtotal, updateQuantity, getBundleProgress } = useCart();
   const { totalMeals, isMinMet, mealsNeeded } = getBundleProgress();
   const subtotal = getSubtotal();
@@ -175,23 +189,40 @@ function CartItems({ onClose }: { onClose?: () => void }) {
 
       {/* Footer */}
       <div className="p-5 border-t border-border bg-card shrink-0">
+        {/* Pickup / Delivery toggle */}
+        <div className="flex rounded-lg overflow-hidden border border-border mb-4">
+          <button
+            onClick={() => setDeliveryType('delivery')}
+            className={`flex-1 py-2 text-xs font-semibold transition-colors cursor-pointer ${deliveryType === 'delivery' ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:bg-muted'}`}
+          >
+            🚗 Delivery — $12
+          </button>
+          <button
+            onClick={() => setDeliveryType('pickup')}
+            className={`flex-1 py-2 text-xs font-semibold transition-colors cursor-pointer border-l border-border ${deliveryType === 'pickup' ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:bg-muted'}`}
+          >
+            🏪 Pickup — Free
+          </button>
+        </div>
+
         <div className="space-y-1.5 mb-3">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Subtotal</span>
             <span className="text-foreground">{formatPrice(subtotal)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Delivery fee</span>
-            <span className="text-foreground">{formatPrice(DELIVERY_FEE)}</span>
+            <span className="text-muted-foreground">{deliveryType === 'delivery' ? 'Delivery fee' : 'Pickup'}</span>
+            <span className="text-foreground">{deliveryFee > 0 ? formatPrice(deliveryFee) : 'Free'}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Tax (6%)</span>
+            <span className="text-foreground">{formatPrice(tax)}</span>
           </div>
           <div className="flex justify-between pt-1.5 border-t border-border">
             <span className="font-semibold text-foreground">Total</span>
-            <span className="text-xl font-bold text-foreground">{formatPrice(subtotal + DELIVERY_FEE)}</span>
+            <span className="text-xl font-bold text-foreground">{formatPrice(subtotal + deliveryFee + tax)}</span>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground text-center mb-3">
-          Local delivery $12. Additional fees may apply outside local area.
-        </p>
         {!isMinMet && totalMeals > 0 && (
           <div className="text-xs text-amber-600 mb-3 text-center font-medium">
             Minimum 4 meals required to order
@@ -206,10 +237,16 @@ function CheckoutForm({
   onBack,
   onSuccess,
   onError,
+  deliveryType,
+  deliveryFee,
+  tax,
 }: {
   onBack: () => void;
   onSuccess: (orderNumber: string) => void;
   onError: () => void;
+  deliveryType: 'delivery' | 'pickup';
+  deliveryFee: number;
+  tax: number;
 }) {
   const { items, getSubtotal, getBundleProgress } = useCart();
   const { totalMeals } = getBundleProgress();
@@ -247,14 +284,16 @@ function CheckoutForm({
   const handleSubmit = async () => {
     if (!form.customerName.trim()) { setFieldError('Please enter your name.'); return; }
     if (!form.customerPhone.trim()) { setFieldError('Please enter your phone number.'); return; }
-    if (!form.deliveryAddress.trim()) { setFieldError('Please enter your delivery address.'); return; }
-    if (!form.deliveryDate) { setFieldError('Please select a delivery date.'); return; }
-    if (!form.deliveryWindow) { setFieldError('Please select a delivery window.'); return; }
+    if (deliveryType === 'delivery') {
+      if (!form.deliveryAddress.trim()) { setFieldError('Please enter your delivery address.'); return; }
+      if (!form.deliveryDate) { setFieldError('Please select a delivery date.'); return; }
+      if (!form.deliveryWindow) { setFieldError('Please select a delivery window.'); return; }
+    }
     if (!form.customerEmail.trim()) { setFieldError('Please enter your email address.'); return; }
     setFieldError('');
     setLoading(true);
     try {
-      const result = await submitOrder(form, items, subtotal);
+      const result = await submitOrder(form, items, subtotal, deliveryFee, tax, deliveryType);
       if (result.success) {
         onSuccess(result.orderNumber ?? 'RK-???');
       } else {
@@ -280,10 +319,14 @@ function CheckoutForm({
       {/* Order summary strip */}
       <div className="px-5 py-3 bg-muted/60 border-b border-border shrink-0">
         <div className="flex justify-between text-sm mb-1">
-          <span className="text-muted-foreground">{totalMeals} meals + delivery</span>
-          <span className="font-bold text-foreground">{formatPrice(subtotal + DELIVERY_FEE)}</span>
+          <span className="text-muted-foreground">
+            {totalMeals} meals · {deliveryType === 'delivery' ? 'Delivery' : 'Pickup'}
+          </span>
+          <span className="font-bold text-foreground">{formatPrice(subtotal + deliveryFee + tax)}</span>
         </div>
-        <p className="text-xs text-muted-foreground">Incl. $12 local delivery fee</p>
+        <p className="text-xs text-muted-foreground">
+          {deliveryType === 'delivery' ? 'Incl. $12 delivery + 6% tax' : 'Incl. 6% tax · free pickup'}
+        </p>
       </div>
 
       {/* Form */}
@@ -310,16 +353,23 @@ function CheckoutForm({
           />
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Delivery Address *</label>
-          <textarea
-            placeholder="Street address, city, state, zip..."
-            value={form.deliveryAddress}
-            onChange={e => setForm(f => ({ ...f, deliveryAddress: e.target.value }))}
-            rows={2}
-            className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all resize-none"
-          />
-        </div>
+        {deliveryType === 'delivery' ? (
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Delivery Address *</label>
+            <textarea
+              placeholder="Street address, city, state, zip..."
+              value={form.deliveryAddress}
+              onChange={e => setForm(f => ({ ...f, deliveryAddress: e.target.value }))}
+              rows={2}
+              className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all resize-none"
+            />
+          </div>
+        ) : (
+          <div className="rounded-lg border border-accent/30 bg-accent/5 px-4 py-3 text-sm text-foreground">
+            <p className="font-semibold mb-1">🏪 Pickup selected</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">We'll send you our pickup address and your ready-time via WhatsApp after your order is confirmed.</p>
+          </div>
+        )}
 
         <div>
           <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Email *</label>
@@ -332,62 +382,64 @@ function CheckoutForm({
           />
         </div>
 
-        {/* Delivery Date + Window */}
-        <div className="rounded-lg border border-accent/30 bg-accent/5 p-3.5 space-y-3">
-          <p className="text-xs font-bold text-foreground uppercase tracking-wide flex items-center gap-1.5">
-            <span>📅</span> Delivery Date *
-          </p>
+        {/* Delivery Date + Window — delivery only */}
+        {deliveryType === 'delivery' && (
+          <div className="rounded-lg border border-accent/30 bg-accent/5 p-3.5 space-y-3">
+            <p className="text-xs font-bold text-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <span>📅</span> Delivery Date *
+            </p>
 
-          {/* Cutoff notice */}
-          {isCutoffDay && (
-            <div className="rounded-md px-3 py-2 text-xs leading-relaxed bg-amber-50 border border-amber-200 text-amber-800">
-              <strong>⚠️ Today is the order cutoff (Friday).</strong> Same-day delivery is not available — please select next Friday below.
+            {/* Cutoff notice */}
+            {isCutoffDay && (
+              <div className="rounded-md px-3 py-2 text-xs leading-relaxed bg-amber-50 border border-amber-200 text-amber-800">
+                <strong>⚠️ Today is the order cutoff (Friday).</strong> Same-day delivery is not available — please select next Friday below.
+              </div>
+            )}
+
+            {/* Calendar picker */}
+            <div className="rk-calendar flex justify-center">
+              <DayPicker
+                mode="single"
+                selected={selectedDate}
+                onSelect={handleDateSelect}
+                defaultMonth={minFriday}
+                disabled={[
+                  { before: minFriday },
+                  { after: minFriday },
+                  (d: Date) => d.getDay() !== 5,
+                ]}
+              />
             </div>
-          )}
 
-          {/* Calendar picker */}
-          <div className="rk-calendar flex justify-center">
-            <DayPicker
-              mode="single"
-              selected={selectedDate}
-              onSelect={handleDateSelect}
-              defaultMonth={minFriday}
-              disabled={[
-                { before: minFriday },
-                { after: minFriday },
-                (d: Date) => d.getDay() !== 5,
-              ]}
-            />
-          </div>
+            {selectedDate && (
+              <div className="flex items-center gap-2 rounded-md bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-800">
+                <span className="font-bold text-base">✓</span>
+                <span>Delivery: <strong>{form.deliveryDate}</strong></span>
+              </div>
+            )}
 
-          {selectedDate && (
-            <div className="flex items-center gap-2 rounded-md bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-800">
-              <span className="font-bold text-base">✓</span>
-              <span>Delivery: <strong>{form.deliveryDate}</strong></span>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Deliveries every Friday. Same-day orders not accepted. The next available date is highlighted above.
+            </p>
+
+            {/* Time window */}
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
+                Delivery Window *
+              </label>
+              <select
+                value={form.deliveryWindow}
+                onChange={e => setForm(f => ({ ...f, deliveryWindow: e.target.value }))}
+                className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all cursor-pointer"
+              >
+                <option value="">Select a time window...</option>
+                <option value="10 a.m. – 1 p.m.">10 a.m. – 1 p.m.</option>
+                <option value="1 p.m. – 4 p.m.">1 p.m. – 4 p.m.</option>
+              </select>
+              <p className="mt-1.5 text-xs text-muted-foreground">We'll confirm your approximate time by <strong>Thursday evening</strong>.</p>
             </div>
-          )}
-
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Deliveries every Friday. Same-day orders not accepted. The next available date is highlighted above.
-          </p>
-
-          {/* Time window */}
-          <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
-              Delivery Window *
-            </label>
-            <select
-              value={form.deliveryWindow}
-              onChange={e => setForm(f => ({ ...f, deliveryWindow: e.target.value }))}
-              className="w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all cursor-pointer"
-            >
-              <option value="">Select a time window...</option>
-              <option value="10 a.m. – 1 p.m.">10 a.m. – 1 p.m.</option>
-              <option value="1 p.m. – 4 p.m.">1 p.m. – 4 p.m.</option>
-            </select>
-            <p className="mt-1.5 text-xs text-muted-foreground">We'll confirm your approximate time by <strong>Thursday evening</strong>.</p>
           </div>
-        </div>
+        )}
 
         <div>
           <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
@@ -507,14 +559,24 @@ function ErrorScreen({ onBack }: { onBack: () => void }) {
 function CartPanel({ onClose }: { onClose?: () => void }) {
   const [screen, setScreen] = useState<Screen>('cart');
   const [orderNumber, setOrderNumber] = useState('');
-  const { getBundleProgress } = useCart();
+  const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
+  const { getBundleProgress, getSubtotal } = useCart();
   const { isMinMet } = getBundleProgress();
+  const subtotal = getSubtotal();
+  const deliveryFee = deliveryType === 'delivery' ? DELIVERY_FEE : 0;
+  const tax = parseFloat((subtotal * TAX_RATE).toFixed(2));
 
   return (
     <div className="flex flex-col h-full bg-card relative">
       {screen === 'cart' && (
         <>
-          <CartItems onClose={onClose} />
+          <CartItems
+            onClose={onClose}
+            deliveryType={deliveryType}
+            setDeliveryType={setDeliveryType}
+            deliveryFee={deliveryFee}
+            tax={tax}
+          />
           {/* Proceed button lives outside CartItems so it can change screen */}
           <div className="px-5 pb-5 bg-card shrink-0">
             <button
@@ -532,6 +594,9 @@ function CartPanel({ onClose }: { onClose?: () => void }) {
           onBack={() => setScreen('cart')}
           onSuccess={(num) => { setOrderNumber(num); setScreen('success'); }}
           onError={() => setScreen('error')}
+          deliveryType={deliveryType}
+          deliveryFee={deliveryFee}
+          tax={tax}
         />
       )}
       {screen === 'success' && (

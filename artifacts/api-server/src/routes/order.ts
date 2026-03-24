@@ -44,6 +44,7 @@ interface OrderBody {
   deliveryDate?: string;
   deliveryWindow?: string;
   deliveryFee?: number;
+  tax?: number;
   allergies?: string;
   deliveryType: string;
   note?: string;
@@ -52,7 +53,7 @@ interface OrderBody {
 }
 
 function formatOrderMessage(order: OrderBody & { orderNumber: string }): string {
-  const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryDate, deliveryWindow, deliveryFee, allergies, items, note, orderNumber } = order;
+  const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryDate, deliveryWindow, deliveryFee, tax, allergies, deliveryType, items, note, orderNumber } = order;
 
   const itemList = items
     .map(item => {
@@ -63,13 +64,16 @@ function formatOrderMessage(order: OrderBody & { orderNumber: string }): string 
     })
     .join('\n');
 
-  const grandTotal = items
-    .reduce((sum, item) => {
-      const price = Number(String(item.price).replace(/[^0-9.]/g, ''));
-      const qty = parseInt(String(item.qty), 10);
-      return sum + (price * qty);
-    }, 0)
-    .toFixed(2);
+  const itemsSubtotal = items.reduce((sum, item) => {
+    const price = Number(String(item.price).replace(/[^0-9.]/g, ''));
+    const qty = parseInt(String(item.qty), 10);
+    return sum + (price * qty);
+  }, 0);
+
+  const fee = deliveryFee ?? 0;
+  const taxAmt = tax ?? 0;
+  const grandTotal = (itemsSubtotal + fee + taxAmt).toFixed(2);
+  const isPickup = deliveryType === 'Pickup';
 
   return [
     `🍽️ NEW ORDER — Reigns Kitchen`,
@@ -78,16 +82,18 @@ function formatOrderMessage(order: OrderBody & { orderNumber: string }): string 
     `👤 Name: ${customerName}`,
     `📞 Phone: ${customerPhone}`,
     customerEmail ? `📧 Email: ${customerEmail}` : '',
-    deliveryAddress ? `📍 Address: ${deliveryAddress}` : '',
     `━━━━━━━━━━━━━━━━━━`,
-    `🚗 DELIVERY — Friday`,
-    deliveryDate ? `📅 Date: ${deliveryDate}` : '',
-    deliveryWindow ? `🕐 Window: ${deliveryWindow}` : '',
+    isPickup ? `🏪 PICKUP ORDER` : `🚗 DELIVERY — Friday`,
+    !isPickup && deliveryAddress ? `📍 Address: ${deliveryAddress}` : '',
+    !isPickup && deliveryDate ? `📅 Date: ${deliveryDate}` : '',
+    !isPickup && deliveryWindow ? `🕐 Window: ${deliveryWindow}` : '',
     `━━━━━━━━━━━━━━━━━━`,
     `ORDER:`,
     itemList,
     `━━━━━━━━━━━━━━━━━━`,
-    deliveryFee ? `🚗 Delivery Fee: $${deliveryFee.toFixed(2)}` : '',
+    `🧾 Subtotal: $${itemsSubtotal.toFixed(2)}`,
+    isPickup ? `🏪 Pickup: Free` : `🚗 Delivery: $${fee.toFixed(2)}`,
+    `💵 Tax (6%): $${taxAmt.toFixed(2)}`,
     `💰 TOTAL: $${grandTotal}`,
     allergies ? `⚠️ Allergies: ${allergies}` : '',
     note ? `📝 Note: ${note}` : '',
@@ -96,7 +102,7 @@ function formatOrderMessage(order: OrderBody & { orderNumber: string }): string 
 }
 
 function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string }): string {
-  const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryDate, deliveryWindow, deliveryFee, allergies, items, note, orderNumber } = order;
+  const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryDate, deliveryWindow, deliveryFee, tax, allergies, deliveryType, items, note, orderNumber } = order;
 
   const itemRows = items.map(item => {
     const price = Number(String(item.price).replace(/[^0-9.]/g, ''));
@@ -114,7 +120,9 @@ function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string }): string
     return sum + price * qty;
   }, 0);
   const fee = deliveryFee ?? 0;
-  const grandTotal = (itemsTotal + fee).toFixed(2);
+  const taxAmt = tax ?? 0;
+  const grandTotal = (itemsTotal + fee + taxAmt).toFixed(2);
+  const isPickup = deliveryType === 'Pickup';
 
   return `<!DOCTYPE html><html><body style="font-family:sans-serif;background:#f5f5dc;margin:0;padding:20px;">
   <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
@@ -127,17 +135,25 @@ function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string }): string
         <tr><td style="padding:5px 0;color:#666;font-size:13px;">👤 Name</td><td style="padding:5px 0;font-weight:600;">${customerName}</td></tr>
         <tr><td style="padding:5px 0;color:#666;font-size:13px;">📞 Phone</td><td style="padding:5px 0;font-weight:600;">${customerPhone}</td></tr>
         ${customerEmail ? `<tr><td style="padding:5px 0;color:#666;font-size:13px;">📧 Email</td><td style="padding:5px 0;font-weight:600;">${customerEmail}</td></tr>` : ''}
-        ${deliveryAddress ? `<tr><td style="padding:5px 0;color:#666;font-size:13px;">📍 Address</td><td style="padding:5px 0;font-weight:600;">${deliveryAddress}</td></tr>` : ''}
-        <tr><td style="padding:5px 0;color:#666;font-size:13px;">🚗 Type</td><td style="padding:5px 0;font-weight:600;">Friday Delivery</td></tr>
-        ${deliveryDate ? `<tr><td style="padding:5px 0;color:#666;font-size:13px;">📅 Delivery Date</td><td style="padding:5px 0;font-weight:600;">${deliveryDate}</td></tr>` : ''}
-        ${deliveryWindow ? `<tr><td style="padding:5px 0;color:#666;font-size:13px;">🕐 Window</td><td style="padding:5px 0;font-weight:600;">${deliveryWindow}</td></tr>` : ''}
+        <tr><td style="padding:5px 0;color:#666;font-size:13px;">${isPickup ? '🏪 Type' : '🚗 Type'}</td><td style="padding:5px 0;font-weight:600;">${isPickup ? 'Pickup' : 'Friday Delivery'}</td></tr>
+        ${!isPickup && deliveryAddress ? `<tr><td style="padding:5px 0;color:#666;font-size:13px;">📍 Address</td><td style="padding:5px 0;font-weight:600;">${deliveryAddress}</td></tr>` : ''}
+        ${!isPickup && deliveryDate ? `<tr><td style="padding:5px 0;color:#666;font-size:13px;">📅 Delivery Date</td><td style="padding:5px 0;font-weight:600;">${deliveryDate}</td></tr>` : ''}
+        ${!isPickup && deliveryWindow ? `<tr><td style="padding:5px 0;color:#666;font-size:13px;">🕐 Window</td><td style="padding:5px 0;font-weight:600;">${deliveryWindow}</td></tr>` : ''}
       </table>
       <h3 style="margin:0 0 12px;font-size:14px;text-transform:uppercase;letter-spacing:0.05em;color:#1a2235;">Order Details</h3>
       <table style="width:100%;border-collapse:collapse;font-size:14px;">
         ${itemRows}
         <tr>
-          <td colspan="2" style="padding:8px 0 0;color:#666;">Delivery Fee</td>
-          <td style="padding:8px 0 0;text-align:right;color:#666;">$${fee.toFixed(2)}</td>
+          <td colspan="2" style="padding:8px 0 0;color:#666;">Subtotal</td>
+          <td style="padding:8px 0 0;text-align:right;color:#666;">$${itemsTotal.toFixed(2)}</td>
+        </tr>
+        <tr>
+          <td colspan="2" style="padding:4px 0 0;color:#666;">${isPickup ? 'Pickup' : 'Delivery Fee'}</td>
+          <td style="padding:4px 0 0;text-align:right;color:#666;">${isPickup ? 'Free' : `$${fee.toFixed(2)}`}</td>
+        </tr>
+        <tr>
+          <td colspan="2" style="padding:4px 0 0;color:#666;">Tax (6%)</td>
+          <td style="padding:4px 0 0;text-align:right;color:#666;">$${taxAmt.toFixed(2)}</td>
         </tr>
         <tr>
           <td colspan="2" style="padding:8px 0 0;font-weight:700;font-size:15px;border-top:1px solid #eee;">Total</td>
@@ -152,7 +168,7 @@ function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string }): string
 }
 
 function buildCustomerEmailHtml(order: OrderBody & { orderNumber: string }): string {
-  const { customerName, items, orderNumber, deliveryFee, deliveryDate, deliveryWindow } = order;
+  const { customerName, items, orderNumber, deliveryFee, tax, deliveryDate, deliveryWindow, deliveryType } = order;
 
   const itemRows = items.map(item => {
     const price = Number(String(item.price).replace(/[^0-9.]/g, ''));
@@ -170,7 +186,9 @@ function buildCustomerEmailHtml(order: OrderBody & { orderNumber: string }): str
     return sum + price * qty;
   }, 0);
   const fee2 = deliveryFee ?? 0;
-  const grandTotal = (itemsTotal2 + fee2).toFixed(2);
+  const taxAmt2 = tax ?? 0;
+  const grandTotal = (itemsTotal2 + fee2 + taxAmt2).toFixed(2);
+  const isPickup2 = deliveryType === 'Pickup';
 
   return `<!DOCTYPE html><html><body style="font-family:sans-serif;background:#f5f5dc;margin:0;padding:20px;">
   <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
@@ -189,8 +207,16 @@ function buildCustomerEmailHtml(order: OrderBody & { orderNumber: string }): str
       <table style="width:100%;border-collapse:collapse;font-size:14px;">
         ${itemRows}
         <tr>
-          <td colspan="2" style="padding:8px 0 0;color:#666;">Delivery Fee</td>
-          <td style="padding:8px 0 0;text-align:right;color:#666;">$${fee2.toFixed(2)}</td>
+          <td colspan="2" style="padding:8px 0 0;color:#666;">Subtotal</td>
+          <td style="padding:8px 0 0;text-align:right;color:#666;">$${itemsTotal2.toFixed(2)}</td>
+        </tr>
+        <tr>
+          <td colspan="2" style="padding:4px 0 0;color:#666;">${isPickup2 ? 'Pickup' : 'Delivery Fee'}</td>
+          <td style="padding:4px 0 0;text-align:right;color:#666;">${isPickup2 ? 'Free' : `$${fee2.toFixed(2)}`}</td>
+        </tr>
+        <tr>
+          <td colspan="2" style="padding:4px 0 0;color:#666;">Tax (6%)</td>
+          <td style="padding:4px 0 0;text-align:right;color:#666;">$${taxAmt2.toFixed(2)}</td>
         </tr>
         <tr>
           <td colspan="2" style="padding:8px 0 0;font-weight:700;font-size:15px;border-top:1px solid #eee;">Total</td>
@@ -198,9 +224,10 @@ function buildCustomerEmailHtml(order: OrderBody & { orderNumber: string }): str
         </tr>
       </table>
       <div style="margin-top:24px;padding:14px 16px;background:#f0f9f4;border-radius:8px;font-size:13px;color:#2d6a4f;">
-        📅 <strong>Delivery Date:</strong> ${deliveryDate || 'Friday (to be confirmed)'}<br/>
-        ${deliveryWindow ? `🕐 <strong>Window:</strong> ${deliveryWindow}<br/>` : ''}
-        We'll be in touch to confirm your delivery details!
+        ${isPickup2
+          ? '🏪 <strong>Pickup Order</strong> — We\'ll send you the pickup address and ready-time via WhatsApp after confirming your order.'
+          : `📅 <strong>Delivery Date:</strong> ${deliveryDate || 'Friday (to be confirmed)'}<br/>${deliveryWindow ? `🕐 <strong>Window:</strong> ${deliveryWindow}<br/>` : ''}We'll be in touch to confirm your delivery details!`
+        }
       </div>
     </div>
     <div style="padding:16px 28px;background:#f9f7f0;text-align:center;">
