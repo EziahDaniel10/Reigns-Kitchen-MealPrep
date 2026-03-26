@@ -42,7 +42,7 @@ const UNSPLASH_MEAL_PHOTOS: Record<string, string> = {
   // Standard Meals without local photos
   "creole-chicken-bowl":     "photo-1604908176997-125f25cc6f3d",
   // Chef's Featured
-  "lobster-herb-rice":       "photo-1553361371-9b22f78e8b1d",
+  "lobster-herb-rice":       "photo-1476124369491-e7addf5db371",
   "lamb-chops-mash":         "photo-1529694157872-4e0c0f3b238b",
   "surf-turf-special":       "photo-1558030006-450675393462",
 };
