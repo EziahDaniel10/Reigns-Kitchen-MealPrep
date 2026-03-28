@@ -1,7 +1,15 @@
 import { Router } from 'express';
+import { SquareClient, SquareEnvironment } from 'square';
 import { getResendClient } from '../lib/resend.js';
 
 const router = Router();
+
+function getSquareClient() {
+  return new SquareClient({
+    token: process.env.SQUARE_ACCESS_TOKEN!,
+    environment: SquareEnvironment.Production,
+  });
+}
 
 function getRecipients() {
   const recipients: { phone: string; apikey: string }[] = [];
@@ -50,10 +58,35 @@ interface OrderBody {
   note?: string;
   items: OrderItem[];
   total: string;
+  paymentToken?: string;
+  totalCents?: number;
 }
 
-function formatOrderMessage(order: OrderBody & { orderNumber: string }): string {
-  const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryDate, deliveryWindow, deliveryFee, tax, allergies, deliveryType, items, note, orderNumber } = order;
+async function chargeSquare(paymentToken: string, amountCents: number, orderNumber: string): Promise<{ success: boolean; paymentId?: string; error?: string }> {
+  try {
+    const client = getSquareClient();
+    const payment = await client.payments.create({
+      sourceId: paymentToken,
+      idempotencyKey: `${orderNumber}-${Date.now()}`,
+      amountMoney: {
+        amount: amountCents,
+        currency: 'USD',
+      },
+      locationId: process.env.SQUARE_LOCATION_ID!,
+      note: `Reigns Kitchen Order #${orderNumber}`,
+    });
+    const paymentId = (payment as any)?.id ?? (payment as any)?.payment?.id;
+    console.log(`Square payment success: ${paymentId} — $${(amountCents / 100).toFixed(2)}`);
+    return { success: true, paymentId };
+  } catch (err: any) {
+    const msg = err?.errors?.[0]?.detail ?? err?.errors?.[0]?.message ?? err?.message ?? 'Payment declined. Please check your card details.';
+    console.error('Square charge failed:', msg);
+    return { success: false, error: msg };
+  }
+}
+
+function formatOrderMessage(order: OrderBody & { orderNumber: string; paymentId?: string }): string {
+  const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryDate, deliveryWindow, deliveryFee, tax, allergies, deliveryType, items, note, orderNumber, paymentId } = order;
 
   const itemList = items
     .map(item => {
@@ -95,14 +128,15 @@ function formatOrderMessage(order: OrderBody & { orderNumber: string }): string 
     `🍴 Meals: $${itemsSubtotal.toFixed(2)}`,
     `% Tax 6%: $${taxAmt.toFixed(2)}`,
     `💰TOTAL: $${grandTotal}`,
+    paymentId ? `✅ PAID via Square: ${paymentId}` : '',
     allergies ? `⚠️ Allergies: ${allergies}` : '',
     note ? `📝 Note: ${note}` : '',
     `━━━━━━━━━━━━━━━━━━`,
   ].filter(Boolean).join('\n');
 }
 
-function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string }): string {
-  const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryDate, deliveryWindow, deliveryFee, tax, allergies, deliveryType, items, note, orderNumber } = order;
+function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string; paymentId?: string }): string {
+  const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryDate, deliveryWindow, deliveryFee, tax, allergies, deliveryType, items, note, orderNumber, paymentId } = order;
 
   const itemRows = items.map(item => {
     const price = Number(String(item.price).replace(/[^0-9.]/g, ''));
@@ -131,6 +165,7 @@ function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string }): string
       <p style="color:#fff;opacity:0.7;margin:4px 0 0;font-size:13px;">Order #${orderNumber}</p>
     </div>
     <div style="padding:24px 28px;">
+      ${paymentId ? `<div style="margin-bottom:16px;padding:10px 14px;background:#e8f5e9;border-left:4px solid #4caf50;border-radius:8px;font-size:13px;color:#2e7d32;">✅ <strong>Payment Received</strong> — Square ID: ${paymentId}</div>` : ''}
       <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
         <tr><td style="padding:5px 0;color:#666;font-size:13px;">👤 Name</td><td style="padding:5px 0;font-weight:600;">${customerName}</td></tr>
         <tr><td style="padding:5px 0;color:#666;font-size:13px;">📞 Phone</td><td style="padding:5px 0;font-weight:600;">${customerPhone}</td></tr>
@@ -167,8 +202,8 @@ function buildOwnerEmailHtml(order: OrderBody & { orderNumber: string }): string
 </body></html>`;
 }
 
-function buildCustomerEmailHtml(order: OrderBody & { orderNumber: string }): string {
-  const { customerName, items, orderNumber, deliveryFee, tax, deliveryDate, deliveryWindow, deliveryType } = order;
+function buildCustomerEmailHtml(order: OrderBody & { orderNumber: string; paymentId?: string }): string {
+  const { customerName, items, orderNumber, deliveryFee, tax, deliveryDate, deliveryWindow, deliveryType, paymentId } = order;
 
   const itemRows = items.map(item => {
     const price = Number(String(item.price).replace(/[^0-9.]/g, ''));
@@ -198,10 +233,11 @@ function buildCustomerEmailHtml(order: OrderBody & { orderNumber: string }): str
     </div>
     <div style="padding:28px;">
       <p style="font-size:16px;margin:0 0 4px;">Hi <strong>${customerName}</strong> 👋</p>
-      <p style="color:#555;font-size:14px;margin:0 0 24px;">We've received your order and will confirm via WhatsApp, phone or email shortly.</p>
+      <p style="color:#555;font-size:14px;margin:0 0 24px;">Your payment was received and your order is confirmed!</p>
       <div style="background:#f9f7f0;border-radius:10px;padding:16px 20px;margin-bottom:20px;">
         <p style="margin:0 0 4px;font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.05em;">Order Number</p>
         <p style="margin:0;font-size:18px;font-weight:700;color:#1a2235;">#${orderNumber}</p>
+        ${paymentId ? `<p style="margin:8px 0 0;font-size:11px;color:#4caf50;">✅ Paid · Square Ref: ${paymentId}</p>` : ''}
       </div>
       <h3 style="margin:0 0 12px;font-size:14px;text-transform:uppercase;letter-spacing:0.05em;color:#1a2235;">Your Order</h3>
       <table style="width:100%;border-collapse:collapse;font-size:14px;">
@@ -219,7 +255,7 @@ function buildCustomerEmailHtml(order: OrderBody & { orderNumber: string }): str
           <td style="padding:4px 0 0;text-align:right;color:#666;">$${taxAmt2.toFixed(2)}</td>
         </tr>
         <tr>
-          <td colspan="2" style="padding:8px 0 0;font-weight:700;font-size:15px;border-top:1px solid #eee;">Total</td>
+          <td colspan="2" style="padding:8px 0 0;font-weight:700;font-size:15px;border-top:1px solid #eee;">Total Charged</td>
           <td style="padding:8px 0 0;text-align:right;font-weight:700;font-size:15px;color:#1a2235;border-top:1px solid #eee;">$${grandTotal}</td>
         </tr>
       </table>
@@ -237,7 +273,7 @@ function buildCustomerEmailHtml(order: OrderBody & { orderNumber: string }): str
 </body></html>`;
 }
 
-async function sendEmails(order: OrderBody & { orderNumber: string }): Promise<void> {
+async function sendEmails(order: OrderBody & { orderNumber: string; paymentId?: string }): Promise<void> {
   const ownerEmail = process.env.OWNER_EMAIL;
   if (!ownerEmail) {
     console.warn('OWNER_EMAIL not set — skipping email notifications');
@@ -248,7 +284,6 @@ async function sendEmails(order: OrderBody & { orderNumber: string }): Promise<v
     const { client, fromEmail } = getResendClient();
     const from = `Reigns Kitchen <${fromEmail}>`;
 
-    // Owner backup notification (always sent)
     const ownerPromise = client.emails.send({
       from,
       to: [ownerEmail],
@@ -256,7 +291,6 @@ async function sendEmails(order: OrderBody & { orderNumber: string }): Promise<v
       html: buildOwnerEmailHtml(order),
     });
 
-    // Customer confirmation (only if they provided an email)
     const customerPromise = order.customerEmail
       ? client.emails.send({
           from,
@@ -270,7 +304,6 @@ async function sendEmails(order: OrderBody & { orderNumber: string }): Promise<v
     console.log('Owner email sent:', ownerResult);
     if (customerResult) console.log('Customer email sent:', customerResult);
   } catch (err) {
-    // Email errors are non-fatal — WhatsApp is the primary channel
     console.error('Email send error:', err);
   }
 }
@@ -285,13 +318,25 @@ function generateOrderNumber(): string {
 router.post('/send-order', async (req, res) => {
   try {
     const body = req.body as OrderBody;
-    const order = { ...body, orderNumber: generateOrderNumber() };
+    const orderNumber = generateOrderNumber();
 
-    if (!order.customerName || !order.customerPhone || !order.items?.length) {
+    if (!body.customerName || !body.customerPhone || !body.items?.length) {
       res.status(400).json({ success: false, error: 'Missing required order fields' });
       return;
     }
 
+    // Charge via Square if a payment token was provided
+    let paymentId: string | undefined;
+    if (body.paymentToken && body.totalCents) {
+      const charge = await chargeSquare(body.paymentToken, body.totalCents, orderNumber);
+      if (!charge.success) {
+        res.status(402).json({ success: false, error: charge.error ?? 'Payment failed. Please check your card details and try again.' });
+        return;
+      }
+      paymentId = charge.paymentId;
+    }
+
+    const order = { ...body, orderNumber, paymentId };
     const message = formatOrderMessage(order);
     const recipients = getRecipients();
 
@@ -300,7 +345,6 @@ router.post('/send-order', async (req, res) => {
       return;
     }
 
-    // Send WhatsApp + emails in parallel
     const [whatsappResults] = await Promise.all([
       Promise.all(recipients.map(r => sendWhatsApp(r.phone, r.apikey, message))),
       sendEmails(order),
@@ -310,7 +354,8 @@ router.post('/send-order', async (req, res) => {
 
     res.json({
       success: allSent,
-      orderNumber: order.orderNumber,
+      orderNumber,
+      paymentId,
       message: allSent
         ? 'Order received! We will confirm shortly.'
         : 'Order placed but notification partially failed.',

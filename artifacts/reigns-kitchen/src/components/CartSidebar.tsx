@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Plus, Minus, Trash2, X, ChevronLeft, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { ShoppingBag, Plus, Minus, Trash2, X, ChevronLeft, CheckCircle, Loader2, AlertCircle, Lock } from 'lucide-react';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
 import { useCart } from '@/store/use-cart';
 import { formatPrice } from '@/lib/utils';
 import { CONFIG } from '@/data/menu';
 
-type Screen = 'cart' | 'checkout' | 'success' | 'error';
+type Screen = 'cart' | 'checkout' | 'payment' | 'success' | 'error';
 
 const DELIVERY_FEE = 12;
 const TAX_RATE = 0.06;
@@ -15,9 +15,7 @@ const TAX_RATE = 0.06;
 function getMinDeliveryFriday(): Date {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const dayOfWeek = today.getDay(); // 0=Sun…5=Fri…6=Sat
-  // If today is Friday same-day delivery is not allowed, so skip to next Friday.
-  // Otherwise find the next coming Friday (1–6 days away).
+  const dayOfWeek = today.getDay();
   const daysUntilFriday = dayOfWeek === 5 ? 7 : (5 - dayOfWeek + 7) % 7;
   const friday = new Date(today);
   friday.setDate(today.getDate() + daysUntilFriday);
@@ -35,50 +33,16 @@ interface OrderForm {
   note: string;
 }
 
-async function submitOrder(
-  form: OrderForm,
-  items: ReturnType<typeof useCart>['items'],
-  subtotal: number,
-  deliveryFee: number,
-  tax: number,
-  deliveryType: 'delivery' | 'pickup',
-): Promise<{ success: boolean; orderNumber?: string; error?: string }> {
-  const orderItems = Object.values(items).map(item => ({
-    name: item.name,
-    qty: parseInt(String(item.quantity), 10),
-    price: Number(String(item.price).replace(/[^0-9.]/g, '')),
-  }));
-
-  const itemsTotal = orderItems.reduce((sum, i) => {
-    const cleanPrice = Number(String(i.price).replace(/[^0-9.]/g, ''));
-    const cleanQty = parseInt(String(i.qty), 10);
-    return sum + (cleanPrice * cleanQty);
-  }, 0);
-  const total = (itemsTotal + deliveryFee + tax).toFixed(2);
-
-  const res = await fetch('/api/send-order', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      customerName: form.customerName,
-      customerPhone: form.customerPhone,
-      customerEmail: form.customerEmail,
-      deliveryAddress: deliveryType === 'delivery' ? form.deliveryAddress : undefined,
-      deliveryDate: deliveryType === 'delivery' ? form.deliveryDate : undefined,
-      deliveryWindow: deliveryType === 'delivery' ? form.deliveryWindow : undefined,
-      allergies: form.allergies,
-      deliveryType: deliveryType === 'delivery' ? 'Delivery' : 'Pickup',
-      deliveryFee,
-      tax,
-      note: form.note,
-      items: orderItems,
-      total,
-    }),
-  });
-
-  const data = await res.json();
-  return data;
-}
+const EMPTY_FORM: OrderForm = {
+  customerName: '',
+  customerPhone: '',
+  customerEmail: '',
+  deliveryAddress: '',
+  deliveryDate: '',
+  deliveryWindow: '',
+  allergies: '',
+  note: '',
+};
 
 function CartItems({
   onClose,
@@ -100,7 +64,6 @@ function CartItems({
 
   return (
     <>
-      {/* Header */}
       <div className="bg-primary text-primary-foreground py-4 px-5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <ShoppingBag className="w-5 h-5 text-accent" />
@@ -118,7 +81,6 @@ function CartItems({
         </div>
       </div>
 
-      {/* Bundle Progress */}
       {totalMeals > 0 && (
         <div className="px-5 py-4 bg-muted/50 border-b border-border shrink-0">
           <div className="flex justify-between items-end mb-2">
@@ -149,7 +111,6 @@ function CartItems({
         </div>
       )}
 
-      {/* Items */}
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
         {totalMeals === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center opacity-70 mt-10">
@@ -187,9 +148,7 @@ function CartItems({
         )}
       </div>
 
-      {/* Footer */}
       <div className="p-5 border-t border-border bg-card shrink-0">
-        {/* Pickup / Delivery toggle */}
         <div className="flex rounded-lg overflow-hidden border border-border mb-4">
           <button
             onClick={() => setDeliveryType('delivery')}
@@ -235,20 +194,20 @@ function CartItems({
 
 function CheckoutForm({
   onBack,
-  onSuccess,
-  onError,
+  onValidated,
+  initialForm,
   deliveryType,
   deliveryFee,
   tax,
 }: {
   onBack: () => void;
-  onSuccess: (orderNumber: string) => void;
-  onError: () => void;
+  onValidated: (form: OrderForm) => void;
+  initialForm: OrderForm;
   deliveryType: 'delivery' | 'pickup';
   deliveryFee: number;
   tax: number;
 }) {
-  const { items, getSubtotal, getBundleProgress } = useCart();
+  const { getSubtotal, getBundleProgress } = useCart();
   const { totalMeals } = getBundleProgress();
   const subtotal = getSubtotal();
 
@@ -256,16 +215,8 @@ function CheckoutForm({
   const isCutoffDay = new Date().getDay() === 5;
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [form, setForm] = useState<OrderForm>({
-    customerName: '',
-    customerPhone: '',
-    customerEmail: '',
-    deliveryAddress: '',
-    deliveryDate: '',
-    deliveryWindow: '',
-    allergies: '',
-    note: '',
-  });
+  const [form, setForm] = useState<OrderForm>(initialForm);
+  const [fieldError, setFieldError] = useState('');
 
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
@@ -278,10 +229,8 @@ function CheckoutForm({
       setForm(f => ({ ...f, deliveryDate: '' }));
     }
   };
-  const [loading, setLoading] = useState(false);
-  const [fieldError, setFieldError] = useState('');
 
-  const handleSubmit = async () => {
+  const handleContinue = () => {
     if (!form.customerName.trim()) { setFieldError('Please enter your name.'); return; }
     if (!form.customerPhone.trim()) { setFieldError('Please enter your phone number.'); return; }
     if (deliveryType === 'delivery') {
@@ -291,24 +240,11 @@ function CheckoutForm({
     }
     if (!form.customerEmail.trim()) { setFieldError('Please enter your email address.'); return; }
     setFieldError('');
-    setLoading(true);
-    try {
-      const result = await submitOrder(form, items, subtotal, deliveryFee, tax, deliveryType);
-      if (result.success) {
-        onSuccess(result.orderNumber ?? 'RK-???');
-      } else {
-        onError();
-      }
-    } catch {
-      onError();
-    } finally {
-      setLoading(false);
-    }
+    onValidated(form);
   };
 
   return (
     <>
-      {/* Header */}
       <div className="bg-primary text-primary-foreground py-4 px-5 flex items-center gap-3 shrink-0">
         <button onClick={onBack} className="p-1 hover:bg-white/10 rounded-full transition-colors cursor-pointer">
           <ChevronLeft className="w-5 h-5" />
@@ -316,7 +252,6 @@ function CheckoutForm({
         <h2 className="font-serif font-bold text-lg">Your Details</h2>
       </div>
 
-      {/* Order summary strip */}
       <div className="px-5 py-3 bg-muted/60 border-b border-border shrink-0">
         <div className="flex justify-between text-sm mb-1">
           <span className="text-muted-foreground">
@@ -329,7 +264,6 @@ function CheckoutForm({
         </p>
       </div>
 
-      {/* Form */}
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
         <div>
           <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Full Name *</label>
@@ -382,21 +316,18 @@ function CheckoutForm({
           />
         </div>
 
-        {/* Delivery Date + Window — delivery only */}
         {deliveryType === 'delivery' && (
           <div className="rounded-lg border border-accent/30 bg-accent/5 p-3.5 space-y-3">
             <p className="text-xs font-bold text-foreground uppercase tracking-wide flex items-center gap-1.5">
               <span>📅</span> Delivery Date *
             </p>
 
-            {/* Cutoff notice */}
             {isCutoffDay && (
               <div className="rounded-md px-3 py-2 text-xs leading-relaxed bg-amber-50 border border-amber-200 text-amber-800">
                 <strong>⚠️ Today is the order cutoff (Friday).</strong> Same-day delivery is not available — please select next Friday below.
               </div>
             )}
 
-            {/* Calendar picker */}
             <div className="rk-calendar flex justify-center">
               <DayPicker
                 mode="single"
@@ -422,7 +353,6 @@ function CheckoutForm({
               Deliveries every Friday. Same-day orders not accepted. The next available date is highlighted above.
             </p>
 
-            {/* Time window */}
             <div>
               <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
                 Delivery Window *
@@ -478,31 +408,258 @@ function CheckoutForm({
         )}
       </div>
 
-      {/* Submit */}
       <div className="p-5 border-t border-border bg-card shrink-0">
         <button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="w-full py-3 rounded-lg font-bold bg-[#25D366] text-white hover:brightness-110 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+          onClick={handleContinue}
+          className="w-full py-3 rounded-lg font-bold bg-accent text-accent-foreground hover:brightness-110 transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Sending Order...
-            </>
-          ) : (
-            <>
-              <span>📲</span>
-              Send Order via WhatsApp
-            </>
-          )}
+          <Lock className="w-4 h-4" />
+          Continue to Payment
         </button>
         <p className="text-center text-xs text-muted-foreground mt-2">
           {CONFIG.orderDeadline}
         </p>
         <div className="mt-3 text-xs text-muted-foreground leading-relaxed border-t border-border pt-3 space-y-1">
-          <p>Please provide all necessary delivery details to ensure a smooth delivery. If delivery instructions are not provided, Reigns Kitchen is not responsible for delays or unsuccessful delivery attempts.</p>
+          <p>Please provide all necessary delivery details to ensure a smooth delivery.</p>
         </div>
+      </div>
+    </>
+  );
+}
+
+function PaymentScreen({
+  onBack,
+  onSuccess,
+  onError,
+  formData,
+  deliveryType,
+  deliveryFee,
+  tax,
+}: {
+  onBack: () => void;
+  onSuccess: (orderNumber: string) => void;
+  onError: () => void;
+  formData: OrderForm;
+  deliveryType: 'delivery' | 'pickup';
+  deliveryFee: number;
+  tax: number;
+}) {
+  const { items, getSubtotal, getBundleProgress } = useCart();
+  const { totalMeals } = getBundleProgress();
+  const subtotal = getSubtotal();
+  const total = subtotal + deliveryFee + tax;
+  const totalCents = Math.round(total * 100);
+
+  const cardRef = useRef<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [sqReady, setSqReady] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let card: any;
+    const appId = import.meta.env.VITE_SQUARE_APP_ID;
+    const locationId = import.meta.env.VITE_SQUARE_LOCATION_ID;
+
+    async function initSquare() {
+      if (!(window as any).Square) {
+        setError('Payment system not available. Please refresh the page and try again.');
+        return;
+      }
+      try {
+        const payments = (window as any).Square.payments(appId, locationId);
+        card = await payments.card({
+          style: {
+            '.input-container': {
+              borderColor: '#e2e8f0',
+              borderRadius: '8px',
+            },
+            '.input-container.is-focus': {
+              borderColor: '#c9a84c',
+            },
+            '.input-container.is-error': {
+              borderColor: '#ef4444',
+            },
+            '.message-text': {
+              color: '#6b7280',
+            },
+            '.message-icon': {
+              color: '#6b7280',
+            },
+            input: {
+              backgroundColor: 'white',
+              color: '#0f172a',
+              fontFamily: 'DM Sans, sans-serif',
+            },
+          },
+        });
+        await card.attach('#sq-card-container');
+        cardRef.current = card;
+        setSqReady(true);
+      } catch (e) {
+        console.error('Square init error:', e);
+        setError('Could not load payment form. Please try again.');
+      }
+    }
+
+    initSquare();
+
+    return () => {
+      if (card) {
+        card.destroy().catch(() => {});
+      }
+    };
+  }, []);
+
+  const handlePay = async () => {
+    if (!cardRef.current || !sqReady) return;
+    setError('');
+    setLoading(true);
+    try {
+      const result = await cardRef.current.tokenize();
+      if (result.status !== 'OK') {
+        const msg = result.errors?.[0]?.message ?? 'Card verification failed. Please check your card details.';
+        setError(msg);
+        setLoading(false);
+        return;
+      }
+
+      const orderItems = Object.values(items).map(item => ({
+        name: item.name,
+        qty: parseInt(String(item.quantity), 10),
+        price: Number(String(item.price).replace(/[^0-9.]/g, '')),
+      }));
+
+      const res = await fetch('/api/send-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: formData.customerName,
+          customerPhone: formData.customerPhone,
+          customerEmail: formData.customerEmail,
+          deliveryAddress: deliveryType === 'delivery' ? formData.deliveryAddress : undefined,
+          deliveryDate: deliveryType === 'delivery' ? formData.deliveryDate : undefined,
+          deliveryWindow: deliveryType === 'delivery' ? formData.deliveryWindow : undefined,
+          allergies: formData.allergies,
+          deliveryType: deliveryType === 'delivery' ? 'Delivery' : 'Pickup',
+          deliveryFee,
+          tax,
+          note: formData.note,
+          items: orderItems,
+          total: total.toFixed(2),
+          paymentToken: result.token,
+          totalCents,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        onSuccess(data.orderNumber ?? 'RK-???');
+      } else {
+        setError(data.error ?? 'Payment failed. Please try again.');
+        setLoading(false);
+      }
+    } catch {
+      onError();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="bg-primary text-primary-foreground py-4 px-5 flex items-center gap-3 shrink-0">
+        <button onClick={onBack} className="p-1 hover:bg-white/10 rounded-full transition-colors cursor-pointer">
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <h2 className="font-serif font-bold text-lg">Secure Payment</h2>
+      </div>
+
+      <div className="px-5 py-3 bg-muted/60 border-b border-border shrink-0">
+        <div className="flex justify-between text-sm mb-1">
+          <span className="text-muted-foreground">
+            {totalMeals} meals · {deliveryType === 'delivery' ? 'Delivery' : 'Pickup'}
+          </span>
+          <span className="font-bold text-foreground">{formatPrice(total)}</span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {deliveryType === 'delivery' ? 'Incl. $12 delivery + 6% tax' : 'Incl. 6% tax · free pickup'}
+        </p>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+        <div>
+          <label className="block text-xs font-semibold text-foreground mb-3 uppercase tracking-wide">
+            Card Details
+          </label>
+
+          {!sqReady && !error && (
+            <div className="flex items-center justify-center py-8 gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Loading secure payment form...</span>
+            </div>
+          )}
+
+          <div
+            id="sq-card-container"
+            className={sqReady ? 'block' : 'hidden'}
+            style={{ minHeight: 89 }}
+          />
+        </div>
+
+        {error && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="rounded-lg bg-muted/40 p-3 space-y-1.5 text-xs text-muted-foreground">
+          <div className="flex justify-between">
+            <span>Subtotal</span>
+            <span>{formatPrice(subtotal)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>{deliveryType === 'delivery' ? 'Delivery fee' : 'Pickup'}</span>
+            <span>{deliveryFee > 0 ? formatPrice(deliveryFee) : 'Free'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Tax (6%)</span>
+            <span>{formatPrice(tax)}</span>
+          </div>
+          <div className="flex justify-between font-bold text-foreground text-sm pt-1.5 border-t border-border">
+            <span>Total charged today</span>
+            <span>{formatPrice(total)}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Lock className="w-3.5 h-3.5 shrink-0" />
+          <span>Your card is encrypted and never stored. Powered by Square.</span>
+        </div>
+      </div>
+
+      <div className="p-5 border-t border-border bg-card shrink-0">
+        <button
+          onClick={handlePay}
+          disabled={loading || !sqReady}
+          className="w-full py-3.5 rounded-lg font-bold bg-primary text-primary-foreground hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer text-base"
+          style={{ background: sqReady && !loading ? '#1a2235' : undefined }}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Processing Payment...
+            </>
+          ) : (
+            <>
+              <Lock className="w-4 h-4" />
+              Pay {formatPrice(total)}
+            </>
+          )}
+        </button>
+        <p className="text-center text-xs text-muted-foreground mt-2">
+          Secure · Encrypted · Powered by Square
+        </p>
       </div>
     </>
   );
@@ -519,10 +676,10 @@ function SuccessScreen({ orderNumber, onClose }: { orderNumber: string; onClose:
   return (
     <div className="flex flex-col h-full bg-card items-center justify-center px-6 text-center">
       <CheckCircle className="w-16 h-16 text-green-500 mb-4" />
-      <h2 className="font-serif text-2xl font-bold text-foreground mb-2">Order Received!</h2>
+      <h2 className="font-serif text-2xl font-bold text-foreground mb-2">Order Confirmed!</h2>
       <p className="text-sm font-semibold text-muted-foreground mb-1">Order #{orderNumber}</p>
       <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
-        We've received your order and will confirm via WhatsApp, phone or email shortly.
+        Your payment was received and your order is confirmed. We'll be in touch via WhatsApp or email shortly.
       </p>
       <div className="mt-5 bg-muted/60 rounded-xl p-4 text-xs text-muted-foreground text-left w-full">
         <p>📅 Order deadline: {CONFIG.orderDeadline}</p>
@@ -544,7 +701,7 @@ function ErrorScreen({ onBack }: { onBack: () => void }) {
       <AlertCircle className="w-16 h-16 text-destructive mb-4" />
       <h2 className="font-serif text-2xl font-bold text-foreground mb-2">Something went wrong</h2>
       <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-        We couldn't send your order. Please try again or contact us directly.
+        We couldn't process your order. Please try again or contact us directly.
       </p>
       <button
         onClick={onBack}
@@ -559,6 +716,7 @@ function ErrorScreen({ onBack }: { onBack: () => void }) {
 function CartPanel({ onClose }: { onClose?: () => void }) {
   const [screen, setScreen] = useState<Screen>('cart');
   const [orderNumber, setOrderNumber] = useState('');
+  const [formData, setFormData] = useState<OrderForm>(EMPTY_FORM);
   const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
   const { getBundleProgress, getSubtotal } = useCart();
   const { isMinMet } = getBundleProgress();
@@ -577,7 +735,6 @@ function CartPanel({ onClose }: { onClose?: () => void }) {
             deliveryFee={deliveryFee}
             tax={tax}
           />
-          {/* Proceed button lives outside CartItems so it can change screen */}
           <div className="px-5 pb-5 bg-card shrink-0">
             <button
               disabled={!isMinMet}
@@ -592,8 +749,19 @@ function CartPanel({ onClose }: { onClose?: () => void }) {
       {screen === 'checkout' && (
         <CheckoutForm
           onBack={() => setScreen('cart')}
+          onValidated={(form) => { setFormData(form); setScreen('payment'); }}
+          initialForm={formData}
+          deliveryType={deliveryType}
+          deliveryFee={deliveryFee}
+          tax={tax}
+        />
+      )}
+      {screen === 'payment' && (
+        <PaymentScreen
+          onBack={() => setScreen('checkout')}
           onSuccess={(num) => { setOrderNumber(num); setScreen('success'); }}
           onError={() => setScreen('error')}
+          formData={formData}
           deliveryType={deliveryType}
           deliveryFee={deliveryFee}
           tax={tax}
@@ -603,7 +771,7 @@ function CartPanel({ onClose }: { onClose?: () => void }) {
         <SuccessScreen orderNumber={orderNumber} onClose={() => { setScreen('cart'); onClose?.(); }} />
       )}
       {screen === 'error' && (
-        <ErrorScreen onBack={() => setScreen('checkout')} />
+        <ErrorScreen onBack={() => setScreen('payment')} />
       )}
     </div>
   );
@@ -616,12 +784,10 @@ export function CartSidebar() {
 
   return (
     <>
-      {/* Desktop sticky sidebar */}
       <div className="hidden lg:block sticky top-32 w-80 shrink-0 rounded-xl bg-card shadow-xl border border-border overflow-hidden h-[calc(100vh-9rem)]">
         <CartPanel />
       </div>
 
-      {/* Mobile */}
       <div className="lg:hidden">
         <AnimatePresence>
           {!isOpen && (
