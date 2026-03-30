@@ -77,7 +77,10 @@ export const useCart = create<CartState>((set, get) => ({
 
   getBundleProgress: () => {
     const totalMeals = get().getTotalItems();
-    const isMinMet = totalMeals >= 1;
+    const allItems = Object.values(get().items);
+    const nonFamilyCount = allItems.filter(i => !i.isFamily).reduce((sum, i) => sum + i.quantity, 0);
+    // Family meals have no minimum; regular meals require 4
+    const isMinMet = nonFamilyCount === 0 ? totalMeals >= 1 : nonFamilyCount >= 4;
     const bundles = [5, 10];
 
     let nextBundle: number | null = null;

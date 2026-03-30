@@ -182,6 +182,11 @@ function CartItems({
             <span className="text-xl font-bold text-foreground">{formatPrice(subtotal + deliveryFee + tax)}</span>
           </div>
         </div>
+        {!isMinMet && totalMeals > 0 && (
+          <div className="text-xs text-amber-600 mt-3 text-center font-medium">
+            Minimum 4 meals required to order
+          </div>
+        )}
       </div>
     </>
   );
