@@ -116,7 +116,7 @@ function CartItems({
           <div className="h-full flex flex-col items-center justify-center text-center opacity-70 mt-10">
             <ShoppingBag className="w-12 h-12 text-muted-foreground mb-3" />
             <h3 className="font-semibold text-foreground">Start building your bundle!</h3>
-            <p className="text-sm text-muted-foreground mt-1">Add 4+ meals to place an order</p>
+            <p className="text-sm text-muted-foreground mt-1">Add meals to start your order</p>
           </div>
         ) : (
           Object.values(items).map(item => (
@@ -182,11 +182,6 @@ function CartItems({
             <span className="text-xl font-bold text-foreground">{formatPrice(subtotal + deliveryFee + tax)}</span>
           </div>
         </div>
-        {!isMinMet && totalMeals > 0 && (
-          <div className="text-xs text-amber-600 mb-3 text-center font-medium">
-            Minimum 4 meals required to order
-          </div>
-        )}
       </div>
     </>
   );

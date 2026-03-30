@@ -77,7 +77,7 @@ export const useCart = create<CartState>((set, get) => ({
 
   getBundleProgress: () => {
     const totalMeals = get().getTotalItems();
-    const isMinMet = totalMeals >= 4;
+    const isMinMet = totalMeals >= 1;
     const bundles = [5, 10];
 
     let nextBundle: number | null = null;
