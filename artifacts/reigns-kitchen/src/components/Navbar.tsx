@@ -1,5 +1,4 @@
 import React from 'react';
-import { Crown } from 'lucide-react';
 import { Link } from 'wouter';
 
 export function Navbar() {
@@ -16,11 +15,12 @@ export function Navbar() {
   return (
     <nav className="sticky top-0 z-50 bg-primary w-full border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 cursor-pointer">
-          <Crown className="w-6 h-6 text-accent" />
-          <span className="font-serif text-primary-foreground text-xl font-bold tracking-wide">
-            Reigns Kitchen
-          </span>
+        <Link href="/" className="flex items-center cursor-pointer">
+          <img
+            src="/images/logo.png"
+            alt="Reigns Kitchen"
+            className="h-12 w-auto object-contain"
+          />
         </Link>
 
         <div className="hidden md:flex items-center gap-6 text-primary-foreground/70 text-sm font-medium">
