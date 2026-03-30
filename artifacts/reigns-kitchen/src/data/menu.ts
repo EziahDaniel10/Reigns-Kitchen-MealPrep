@@ -1,6 +1,8 @@
 export const CONFIG = {
   brand: "Reigns Kitchen",
   whatsappNumber: "2348106032846",
+  contactPhone: "2028396203",
+  contactEmail: "catering@reignskitchen.com",
   tagline: "Real Food. Bold Flavor.",
   subTagline: "Chef-crafted meals by Chef April Winston.",
   heroDescription: "Inspired by Southern, Creole, and international flavors — Reigns Kitchen delivers chef-crafted meal prep that nourishes, excites, and feels like it was made just for you.",

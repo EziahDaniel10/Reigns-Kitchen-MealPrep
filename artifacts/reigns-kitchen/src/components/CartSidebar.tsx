@@ -713,10 +713,65 @@ function ErrorScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
+function ContactModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      className="absolute inset-0 z-50 flex items-end justify-center"
+      style={{ background: 'rgba(0,0,0,0.55)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full rounded-t-2xl p-6 pb-8 space-y-3"
+        style={{ background: '#1a2235' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="font-serif text-lg font-bold" style={{ color: '#F5F5DC' }}>
+            Contact Us
+          </h3>
+          <button onClick={onClose} className="p-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer">
+            <X className="w-4 h-4" style={{ color: '#F5F5DC' }} />
+          </button>
+        </div>
+        <p className="text-sm pb-1" style={{ color: 'rgba(245,245,220,0.65)' }}>
+          We're happy to help. Choose how you'd like to reach us:
+        </p>
+        <a
+          href={`https://wa.me/${CONFIG.whatsappNumber}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 w-full px-4 py-3 rounded-xl font-semibold text-sm transition-all hover:brightness-110 cursor-pointer"
+          style={{ background: '#25D366', color: '#fff' }}
+        >
+          <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current shrink-0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.118 1.532 5.85L.054 23.454a.75.75 0 0 0 .918.919l5.683-1.49A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.694-.504-5.24-1.385l-.374-.217-3.875 1.016 1.029-3.764-.237-.389A9.955 9.955 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+          WhatsApp
+        </a>
+        <a
+          href={`sms:${CONFIG.contactPhone}`}
+          className="flex items-center gap-3 w-full px-4 py-3 rounded-xl font-semibold text-sm transition-all hover:brightness-110 cursor-pointer"
+          style={{ background: '#3b82f6', color: '#fff' }}
+        >
+          <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current shrink-0"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>
+          Text Message
+        </a>
+        <a
+          href={`mailto:${CONFIG.contactEmail}`}
+          className="flex items-center gap-3 w-full px-4 py-3 rounded-xl font-semibold text-sm transition-all hover:brightness-110 cursor-pointer"
+          style={{ background: '#c9a84c', color: '#fff' }}
+        >
+          <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current shrink-0"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/></svg>
+          Email
+        </a>
+      </div>
+    </div>
+  );
+}
+
 function CartPanel({ onClose }: { onClose?: () => void }) {
   const [screen, setScreen] = useState<Screen>('cart');
   const [orderNumber, setOrderNumber] = useState('');
   const [formData, setFormData] = useState<OrderForm>(EMPTY_FORM);
+  const [showContact, setShowContact] = useState(false);
   const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
   const { getBundleProgress, getSubtotal } = useCart();
   const { isMinMet } = getBundleProgress();
@@ -743,6 +798,16 @@ function CartPanel({ onClose }: { onClose?: () => void }) {
             >
               Proceed to Checkout →
             </button>
+            <p className="text-center text-xs mt-3" style={{ color: 'rgba(100,100,110,0.9)' }}>
+              Have questions about your order?{' '}
+              <button
+                onClick={() => setShowContact(true)}
+                className="underline underline-offset-2 font-medium cursor-pointer hover:opacity-80 transition-opacity"
+                style={{ color: '#c9a84c' }}
+              >
+                Contact us
+              </button>
+            </p>
           </div>
         </>
       )}
@@ -773,6 +838,7 @@ function CartPanel({ onClose }: { onClose?: () => void }) {
       {screen === 'error' && (
         <ErrorScreen onBack={() => setScreen('payment')} />
       )}
+      {showContact && <ContactModal onClose={() => setShowContact(false)} />}
     </div>
   );
 }
