@@ -17,7 +17,7 @@ export const CONFIG = {
   signatureMealPrice: 17.99,
   featuredMealPrice: 32.99,
   premiumUpcharge: 3.00,
-  familyMealPrice: 49.99,
+  familyMealPrice: 54.99,
   breakfastPlatePrice: 12.99,
   parfaitPrice: 8.99,
   promoBanner: "Grand Opening Special — First 50 Clients Get Priority Scheduling!",
@@ -73,7 +73,7 @@ export const CONFIG = {
       isFamily: false,
       isFeatured: false,
       items: [
-        { id: "suya-steak-eggs", name: "Suya Steak and Eggs", description: "West African suya-spiced steak served with scrambled eggs and roasted jollof potatoes.", price: 12.99, tag: "Breakfast" },
+        { id: "suya-steak-eggs", name: "Suya Steak and Eggs", description: "West African suya-spiced steak served with scrambled eggs and roasted jollof potatoes.", price: 17.99, tag: "Breakfast" },
         { id: "mini-pancake-plate", name: "Mini Pancake Breakfast Plate", description: "Fluffy mini pancakes served with scrambled eggs and turkey sausage.", price: 12.99, tag: "Breakfast" },
         { id: "greek-yogurt-parfait", name: "Greek Yogurt Fruit Parfait", description: "Creamy Greek yogurt layered with seasonal fruit and crunchy granola.", price: 8.99, tag: "Parfait" },
         { id: "chia-power-parfait", name: "Coconut Chia Power Parfait", description: "Coconut chia pudding layered with fresh berries.", price: 8.99, tag: "Parfait" },
@@ -87,10 +87,10 @@ export const CONFIG = {
       isFamily: true,
       isFeatured: false,
       items: [
-        { id: "turkey-wings-family", name: "Braised Turkey Wings Family Meal", description: "Our signature braised turkey wings in savory onion gravy — family sized.", price: 49.99, tag: "Serves 3-4" },
-        { id: "jerk-chicken-family", name: "Caribbean Jerk Chicken Lasagna Roll-Ups Family Pan", description: "A full pan of our jerk chicken lasagna roll-ups with creamy Caribbean sauce.", price: 49.99, tag: "Serves 3-4" },
-        { id: "chicken-parm-family", name: "Grilled Chicken Parmesan Family Meal", description: "Family-sized herb grilled chicken parmesan with marinara and roasted vegetables.", price: 49.99, tag: "Serves 3-4" },
-        { id: "cajun-shrimp-family", name: "Cajun Shrimp and Grits Family Meal", description: "A generous family pan of Cajun shrimp over creamy parmesan grits.", price: 49.99, tag: "Serves 3-4" },
+        { id: "turkey-wings-family", name: "Braised Turkey Wings Family Meal", description: "Our signature braised turkey wings in savory onion gravy — family sized.", price: 54.99, tag: "Serves 3-4" },
+        { id: "jerk-chicken-family", name: "Caribbean Jerk Chicken Lasagna Roll-Ups Family Pan", description: "A full pan of our jerk chicken lasagna roll-ups with creamy Caribbean sauce.", price: 54.99, tag: "Serves 3-4" },
+        { id: "chicken-parm-family", name: "Grilled Chicken Parmesan Family Meal", description: "Family-sized herb grilled chicken parmesan with marinara and roasted vegetables.", price: 54.99, tag: "Serves 3-4" },
+        { id: "cajun-shrimp-family", name: "Cajun Shrimp and Grits Family Meal", description: "A generous family pan of Cajun shrimp over creamy parmesan grits.", price: 54.99, tag: "Serves 3-4" },
       ]
     }
   ]

@@ -18,9 +18,9 @@ function FamilyPricingBar() {
     >
       <div className="flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-white/10">
         {[
-          { label: '1 Meal', price: '$49.99' },
-          { label: '2 Meals', price: '$94.99' },
-          { label: '3 Meals', price: '$139.99' },
+          { label: '1 Meal', price: '$54.99' },
+          { label: '2 Meals', price: '$109.98' },
+          { label: '3 Meals', price: '$164.97' },
         ].map(({ label, price }) => (
           <div
             key={label}

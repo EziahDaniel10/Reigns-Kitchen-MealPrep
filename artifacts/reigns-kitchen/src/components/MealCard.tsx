@@ -36,14 +36,15 @@ const LOCAL_MEAL_PHOTOS: Record<string, string> = {
   "jerk-chicken-family":     "/images/meals/jerk-chicken-family.jpg",
   "chicken-parm-family":     "/images/meals/chicken-parm-family.jpg",
   "cajun-shrimp-family":     "/images/meals/shrimp-grits-family.jpg",
+  // Chef's Featured — local photos
+  "lamb-chops-mash":         "/images/meals/lamb-chops.jpg",
+  "lobster-herb-rice":       "/images/meals/lobster-bisque.jpg",
 };
 
 const UNSPLASH_MEAL_PHOTOS: Record<string, string> = {
   // Standard Meals without local photos
   "creole-chicken-bowl":     "photo-1604908176997-125f25cc6f3d",
-  // Chef's Featured
-  "lobster-herb-rice":       "photo-1476124369491-e7addf5db371",
-  "lamb-chops-mash":         "photo-1529694157872-4e0c0f3b238b",
+  // Chef's Featured (Surf & Turf still uses Unsplash)
   "surf-turf-special":       "photo-1558030006-450675393462",
 };
 
