@@ -6,10 +6,12 @@ export function Footer() {
   return (
     <footer className="bg-primary text-primary-foreground py-12 px-8 w-full z-10 relative">
       <div className="max-w-7xl mx-auto flex flex-col items-center text-center">
-        <div className="mb-4">
-          <h2 className="font-serif text-2xl font-bold tracking-wider mb-1">
-            Reigns Kitchen
-          </h2>
+        <div className="mb-4 flex flex-col items-center">
+          <img
+            src="/images/logo.png"
+            alt="Reigns Kitchen"
+            className="h-24 w-auto object-contain mb-2"
+          />
           <p className="text-accent font-medium">
             {CONFIG.tagline}
           </p>

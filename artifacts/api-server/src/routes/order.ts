@@ -104,7 +104,7 @@ function formatOrderMessage(order: OrderBody & { orderNumber: string; paymentId?
   }, 0);
 
   const fee = deliveryFee ?? 0;
-  const taxAmt = tax ?? 0;
+  const taxAmt = parseFloat((itemsSubtotal * 0.06).toFixed(2));
   const grandTotal = (itemsSubtotal + fee + taxAmt).toFixed(2);
   const isPickup = deliveryType === 'Pickup';
 
