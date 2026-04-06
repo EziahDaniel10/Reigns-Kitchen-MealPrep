@@ -486,9 +486,8 @@ function PaymentScreen({
               color: '#6b7280',
             },
             input: {
-              backgroundColor: 'white',
+              backgroundColor: '#ffffff',
               color: '#0f172a',
-              fontFamily: 'DM Sans, sans-serif',
             },
           },
         });
