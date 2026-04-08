@@ -4,6 +4,7 @@ import { ShoppingBag, Plus, Minus, Trash2, X, ChevronLeft, CheckCircle, Loader2,
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
 import { useCart } from '@/store/use-cart';
+import { useUI } from '@/store/use-ui';
 import { formatPrice } from '@/lib/utils';
 import { CONFIG } from '@/data/menu';
 
@@ -808,8 +809,8 @@ function ErrorScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
-function ContactModal({ onClose }: { onClose: () => void }) {
-  const [tab, setTab] = useState<'quick' | 'form'>('quick');
+function ContactModal({ onClose, defaultTab = 'quick' }: { onClose: () => void; defaultTab?: 'quick' | 'form' }) {
+  const [tab, setTab] = useState<'quick' | 'form'>(defaultTab);
   const [cf, setCf] = useState({ name: '', email: '', phone: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -870,10 +871,10 @@ function ContactModal({ onClose }: { onClose: () => void }) {
               <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current shrink-0"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>
               Text Message
             </a>
-            <a href={`mailto:${CONFIG.contactEmail}`} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl font-semibold text-sm transition-all hover:brightness-110 cursor-pointer" style={{ background: '#c9a84c', color: '#fff' }}>
+            <button onClick={() => setTab('form')} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl font-semibold text-sm transition-all hover:brightness-110 cursor-pointer border-none" style={{ background: '#c9a84c', color: '#fff' }}>
               <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current shrink-0"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/></svg>
-              Email
-            </a>
+              Send a Message
+            </button>
           </div>
         )}
 
@@ -909,9 +910,9 @@ function CartPanel({ onClose }: { onClose?: () => void }) {
   const [screen, setScreen] = useState<Screen>('cart');
   const [orderNumber, setOrderNumber] = useState('');
   const [formData, setFormData] = useState<OrderForm>(EMPTY_FORM);
-  const [showContact, setShowContact] = useState(false);
   const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  const { contactOpen, contactDefaultTab, openContact, closeContact } = useUI();
   const { getBundleProgress, getSubtotal } = useCart();
   const { isMinMet } = getBundleProgress();
   const subtotal = getSubtotal();
@@ -940,7 +941,7 @@ function CartPanel({ onClose }: { onClose?: () => void }) {
             <p className="text-center text-xs mt-3" style={{ color: 'rgba(100,100,110,0.9)' }}>
               Have questions about your order?{' '}
               <button
-                onClick={() => setShowContact(true)}
+                onClick={() => openContact('quick')}
                 className="underline underline-offset-2 font-medium cursor-pointer hover:opacity-80 transition-opacity"
                 style={{ color: '#c9a84c' }}
               >
@@ -980,7 +981,7 @@ function CartPanel({ onClose }: { onClose?: () => void }) {
       {screen === 'error' && (
         <ErrorScreen onBack={() => setScreen('payment')} />
       )}
-      {showContact && <ContactModal onClose={() => setShowContact(false)} />}
+      {contactOpen && <ContactModal onClose={closeContact} defaultTab={contactDefaultTab} />}
     </div>
   );
 }

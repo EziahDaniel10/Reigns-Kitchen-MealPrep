@@ -1,7 +1,11 @@
 import React from 'react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
+import { useUI } from '@/store/use-ui';
 
 export function Navbar() {
+  const { openContact } = useUI();
+  const [location, navigate] = useLocation();
+
   const scrollToMenu = () => {
     const el = document.getElementById('standard-meals');
     if (el) {
@@ -9,6 +13,16 @@ export function Navbar() {
       window.scrollTo({ top: y, behavior: 'smooth' });
     } else {
       window.location.href = '/';
+    }
+  };
+
+  const handleContact = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (location === '/') {
+      openContact('form');
+    } else {
+      navigate('/');
+      setTimeout(() => openContact('form'), 300);
     }
   };
 
@@ -26,7 +40,12 @@ export function Navbar() {
         <div className="hidden md:flex items-center gap-6 text-primary-foreground/70 text-sm font-medium">
           <Link href="/" className="hover:text-primary-foreground transition-colors cursor-pointer">Weekly Menu</Link>
           <Link href="/about" className="hover:text-primary-foreground transition-colors cursor-pointer">About Us</Link>
-          <a href="mailto:catering@reignskitchen.com" className="hover:text-primary-foreground transition-colors">Contact</a>
+          <button
+            onClick={handleContact}
+            className="hover:text-primary-foreground transition-colors cursor-pointer bg-transparent border-none p-0"
+          >
+            Contact
+          </button>
         </div>
 
         <div>
