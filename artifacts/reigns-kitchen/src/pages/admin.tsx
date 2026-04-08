@@ -95,7 +95,6 @@ function OrdersTab() {
         <tbody>
           {orders.map(o => {
             const isExpanded = expanded === o.id;
-            const details = o.orderDetails ?? {};
             return (
               <React.Fragment key={o.id}>
                 <tr style={{ borderBottom: '1px solid #f0ede4', background: isExpanded ? '#fffef8' : 'transparent' }}>
@@ -106,7 +105,7 @@ function OrdersTab() {
                     <div style={{ color: '#999', fontSize: 11 }}>{o.customerEmail}</div>
                   </td>
                   <td style={{ padding: '10px 12px', textTransform: 'capitalize' }}>{o.deliveryType}</td>
-                  <td style={{ padding: '10px 12px', fontWeight: 700, color: '#1a2235' }}>${(parseFloat(o.totalAmount ?? '0')).toFixed(2)}</td>
+                  <td style={{ padding: '10px 12px', fontWeight: 700, color: '#1a2235' }}>${(parseFloat(o.total ?? '0')).toFixed(2)}</td>
                   <td style={{ padding: '10px 12px' }}><Badge status={o.status} /></td>
                   <td style={{ padding: '10px 12px' }}>
                     <select
@@ -133,18 +132,21 @@ function OrdersTab() {
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16, paddingTop: 12 }}>
                         <div>
                           <p style={{ fontWeight: 700, color: '#1a2235', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Items</p>
-                          {(details.items ?? []).map((item: any) => (
-                            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
-                              <span>{item.name} × {item.quantity}</span>
-                              <span style={{ color: '#666' }}>${(item.price * item.quantity).toFixed(2)}</span>
-                            </div>
-                          ))}
+                          {(Array.isArray(o.items) ? o.items : []).map((item: any, i: number) => {
+                            const qty = item.quantity ?? item.qty ?? 1;
+                            return (
+                              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
+                                <span>{item.name} × {qty}</span>
+                                <span style={{ color: '#666' }}>${(item.price * qty).toFixed(2)}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                         <div>
                           <p style={{ fontWeight: 700, color: '#1a2235', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Delivery Info</p>
-                          <p style={{ fontSize: 12, color: '#555', margin: '0 0 2px' }}>{details.address || '—'}</p>
-                          <p style={{ fontSize: 12, color: '#555', margin: '0 0 2px' }}>{details.deliveryDate ? new Date(details.deliveryDate).toLocaleDateString() : '—'}</p>
-                          <p style={{ fontSize: 12, color: '#555', margin: 0 }}>{details.phone || '—'}</p>
+                          <p style={{ fontSize: 12, color: '#555', margin: '0 0 2px' }}>{o.deliveryAddress || '—'}</p>
+                          <p style={{ fontSize: 12, color: '#555', margin: '0 0 2px' }}>{o.deliveryDate ? new Date(o.deliveryDate).toLocaleDateString() : '—'}</p>
+                          <p style={{ fontSize: 12, color: '#555', margin: 0 }}>{o.customerPhone || '—'}</p>
                         </div>
                         <div>
                           <p style={{ fontWeight: 700, color: '#1a2235', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Totals</p>
@@ -153,19 +155,25 @@ function OrdersTab() {
                             ['Delivery', `$${parseFloat(o.deliveryFee ?? '0').toFixed(2)}`],
                             ['Tax', `$${parseFloat(o.tax ?? '0').toFixed(2)}`],
                             o.discountAmount && parseFloat(o.discountAmount) > 0 ? ['Coupon', `-$${parseFloat(o.discountAmount).toFixed(2)}`] : null,
-                            ['Total', `$${parseFloat(o.totalAmount ?? '0').toFixed(2)}`],
+                            ['Total', `$${parseFloat(o.total ?? '0').toFixed(2)}`],
                           ].filter(Boolean).map(([label, val]) => (
                             <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
                               <span style={{ color: '#666' }}>{label}</span>
                               <span style={{ fontWeight: label === 'Total' ? 700 : 400 }}>{val as string}</span>
                             </div>
                           ))}
-                          {o.squarePaymentId && <p style={{ fontSize: 11, color: '#999', marginTop: 6 }}>Payment ID: {o.squarePaymentId}</p>}
+                          {o.paymentId && <p style={{ fontSize: 11, color: '#999', marginTop: 6 }}>Payment ID: {o.paymentId}</p>}
                         </div>
-                        {details.notes && (
+                        {o.note && (
                           <div>
                             <p style={{ fontWeight: 700, color: '#1a2235', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Notes</p>
-                            <p style={{ fontSize: 12, color: '#555', margin: 0 }}>{details.notes}</p>
+                            <p style={{ fontSize: 12, color: '#555', margin: 0 }}>{o.note}</p>
+                          </div>
+                        )}
+                        {o.allergies && (
+                          <div>
+                            <p style={{ fontWeight: 700, color: '#1a2235', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Allergies</p>
+                            <p style={{ fontSize: 12, color: '#555', margin: 0 }}>{o.allergies}</p>
                           </div>
                         )}
                       </div>
