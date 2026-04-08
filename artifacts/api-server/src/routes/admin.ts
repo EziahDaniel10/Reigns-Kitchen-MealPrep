@@ -137,6 +137,59 @@ router.patch('/enquiries/:id', async (req, res) => {
   }
 });
 
+router.post('/enquiries/:id/reply', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { replyText } = req.body;
+    if (!replyText?.trim()) {
+      res.status(400).json({ success: false, error: 'Reply message is required' });
+      return;
+    }
+
+    const [enquiry] = await db.select().from(contactEnquiriesTable).where(eq(contactEnquiriesTable.id, id));
+    if (!enquiry) { res.status(404).json({ success: false, error: 'Enquiry not found' }); return; }
+    if (!enquiry.email) {
+      res.status(400).json({ success: false, error: 'This enquiry has no email address to reply to' });
+      return;
+    }
+
+    const { getResendClient } = await import('../lib/resend.js');
+    const { client, fromEmail } = getResendClient();
+
+    await client.emails.send({
+      from: `Reigns Kitchen <${fromEmail}>`,
+      to: [enquiry.email],
+      replyTo: fromEmail,
+      subject: `Re: Your message to Reigns Kitchen`,
+      html: `<!DOCTYPE html><html><body style="font-family:sans-serif;background:#f5f5dc;margin:0;padding:20px;">
+        <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;">
+          <div style="background:#1a2235;padding:20px 24px;">
+            <h2 style="color:#FFD700;margin:0;font-size:18px;">Reigns Kitchen</h2>
+          </div>
+          <div style="padding:24px;">
+            <p style="margin:0 0 16px;color:#444;">Hi ${enquiry.name},</p>
+            <div style="white-space:pre-wrap;color:#222;font-size:14px;line-height:1.6;">${replyText.trim().replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+            <hr style="margin:24px 0;border:none;border-top:1px solid #eee;" />
+            <p style="margin:0 0 6px;color:#999;font-size:12px;">Your original message:</p>
+            <div style="background:#f9f7f0;padding:12px;border-radius:8px;font-size:12px;color:#666;">${enquiry.message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+            <p style="margin:20px 0 0;font-size:13px;color:#555;">— Chef April Winston, Reigns Kitchen</p>
+          </div>
+        </div>
+      </body></html>`,
+    });
+
+    const [updated] = await db.update(contactEnquiriesTable)
+      .set({ status: 'replied', replyText: replyText.trim() })
+      .where(eq(contactEnquiriesTable.id, id))
+      .returning();
+
+    res.json({ success: true, enquiry: updated });
+  } catch (err: any) {
+    console.error('Reply error:', err);
+    res.status(500).json({ success: false, error: err?.message ?? 'Failed to send reply' });
+  }
+});
+
 // ── Coupons ──────────────────────────────────────────────────────────────────
 
 router.get('/coupons', async (_req, res) => {

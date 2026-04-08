@@ -7,6 +7,7 @@ export const contactEnquiriesTable = pgTable("contact_enquiries", {
   phone: text("phone"),
   message: text("message").notNull(),
   status: text("status").notNull().default("new"),
+  replyText: text("reply_text"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

@@ -196,10 +196,13 @@ function EnquiriesTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [updating, setUpdating] = useState<number | null>(null);
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
       const r = await apiFetch('/admin/enquiries');
       const d = await r.json();
@@ -221,47 +224,130 @@ function EnquiriesTab() {
     setUpdating(null);
   }
 
+  function openReply(e: any) {
+    setReplyingTo(e.id);
+    setReplyText('');
+    setSendError('');
+  }
+
+  async function sendReply(id: number) {
+    if (!replyText.trim()) { setSendError('Please write a reply first.'); return; }
+    setSending(true); setSendError('');
+    try {
+      const r = await apiFetch(`/admin/enquiries/${id}/reply`, {
+        method: 'POST',
+        body: JSON.stringify({ replyText }),
+      });
+      const d = await r.json();
+      if (d.success) {
+        setEnquiries(prev => prev.map(e => e.id === id ? { ...e, status: 'replied', replyText } : e));
+        setReplyingTo(null);
+        setReplyText('');
+      } else {
+        setSendError(d.error ?? 'Failed to send reply');
+      }
+    } catch { setSendError('Network error. Please try again.'); }
+    setSending(false);
+  }
+
   if (loading) return <p style={{ color: '#999', padding: 32 }}>Loading enquiries…</p>;
   if (error) return <p style={{ color: '#ef4444', padding: 32 }}>{error}</p>;
   if (!enquiries.length) return <p style={{ color: '#999', padding: 32 }}>No enquiries yet.</p>;
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <thead>
-          <tr style={{ background: '#f8f6f0', borderBottom: '1px solid #eee' }}>
-            {['Date', 'Name', 'Contact', 'Message', 'Status', 'Update'].map(h => (
-              <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, color: '#666' }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {enquiries.map(e => (
-            <tr key={e.id} style={{ borderBottom: '1px solid #f0ede4' }}>
-              <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', color: '#999', fontSize: 11 }}>{new Date(e.createdAt).toLocaleString()}</td>
-              <td style={{ padding: '10px 12px', fontWeight: 600, color: '#1a2235' }}>{e.name}</td>
-              <td style={{ padding: '10px 12px', fontSize: 11, color: '#555' }}>
-                {e.email && <div>{e.email}</div>}
-                {e.phone && <div>{e.phone}</div>}
-              </td>
-              <td style={{ padding: '10px 12px', maxWidth: 300, color: '#444' }}>{e.message}</td>
-              <td style={{ padding: '10px 12px' }}><Badge status={e.status ?? 'new'} /></td>
-              <td style={{ padding: '10px 12px' }}>
+    <div>
+      {enquiries.map(e => {
+        const isReplying = replyingTo === e.id;
+        return (
+          <div key={e.id} style={{ border: '1px solid #f0ede4', borderRadius: 10, marginBottom: 12, overflow: 'hidden', background: e.status === 'new' ? '#fffef8' : '#fff' }}>
+            <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'start' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 16px', alignItems: 'start' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, gridColumn: '1 / -1', marginBottom: 6 }}>
+                  <span style={{ fontWeight: 700, color: '#1a2235', fontSize: 14 }}>{e.name}</span>
+                  <Badge status={e.status ?? 'new'} />
+                  <span style={{ color: '#bbb', fontSize: 11, marginLeft: 'auto' }}>{new Date(e.createdAt).toLocaleString()}</span>
+                </div>
+                {e.email && (
+                  <>
+                    <span style={{ fontSize: 11, color: '#999', fontWeight: 600, textTransform: 'uppercase' }}>Email</span>
+                    <span style={{ fontSize: 12, color: '#555' }}>{e.email}</span>
+                  </>
+                )}
+                {e.phone && (
+                  <>
+                    <span style={{ fontSize: 11, color: '#999', fontWeight: 600, textTransform: 'uppercase' }}>Phone</span>
+                    <span style={{ fontSize: 12, color: '#555' }}>{e.phone}</span>
+                  </>
+                )}
+                <span style={{ fontSize: 11, color: '#999', fontWeight: 600, textTransform: 'uppercase', paddingTop: 2 }}>Message</span>
+                <p style={{ margin: 0, fontSize: 13, color: '#333', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{e.message}</p>
+                {e.replyText && (
+                  <>
+                    <span style={{ fontSize: 11, color: '#059669', fontWeight: 600, textTransform: 'uppercase', paddingTop: 2 }}>Reply sent</span>
+                    <p style={{ margin: 0, fontSize: 12, color: '#059669', lineHeight: 1.5, whiteSpace: 'pre-wrap', background: '#f0fdf4', padding: '8px 10px', borderRadius: 6 }}>{e.replyText}</p>
+                  </>
+                )}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 120, alignItems: 'flex-end' }}>
                 <select
                   disabled={updating === e.id}
                   value={e.status ?? 'new'}
                   onChange={ev => updateStatus(e.id, ev.target.value)}
-                  style={{ padding: '5px 8px', borderRadius: 6, border: '1px solid #ddd', fontSize: 12, cursor: 'pointer', background: '#fff' }}
+                  style={{ padding: '5px 8px', borderRadius: 6, border: '1px solid #ddd', fontSize: 12, cursor: 'pointer', background: '#fff', width: '100%' }}
                 >
                   {['new', 'read', 'replied'].map(s => (
-                    <option key={s} value={s} style={{ textTransform: 'capitalize' }}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                   ))}
                 </select>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                {e.email ? (
+                  <button
+                    onClick={() => isReplying ? setReplyingTo(null) : openReply(e)}
+                    style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: isReplying ? '#f0ede4' : '#1a2235', color: isReplying ? '#666' : '#FFD700' }}
+                  >
+                    {isReplying ? 'Cancel' : e.replyText ? 'Reply again' : 'Reply'}
+                  </button>
+                ) : (
+                  <span style={{ fontSize: 11, color: '#bbb', textAlign: 'center' }}>No email to reply</span>
+                )}
+              </div>
+            </div>
+
+            {isReplying && (
+              <div style={{ borderTop: '1px solid #f0ede4', padding: '14px 16px', background: '#f8f6f0' }}>
+                <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: '#1a2235' }}>
+                  Reply to {e.name} <span style={{ color: '#999', fontWeight: 400 }}>({e.email})</span>
+                </p>
+                <p style={{ margin: '0 0 8px', fontSize: 11, color: '#888' }}>
+                  Email will be sent from catering@reignskitchen.com and will include their original message.
+                </p>
+                <textarea
+                  value={replyText}
+                  onChange={ev => setReplyText(ev.target.value)}
+                  placeholder={`Hi ${e.name},\n\nThank you for reaching out…`}
+                  rows={5}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1.5px solid #ddd', fontSize: 13, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'sans-serif', lineHeight: 1.5 }}
+                />
+                {sendError && <p style={{ color: '#ef4444', fontSize: 12, margin: '6px 0 0' }}>{sendError}</p>}
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <button
+                    onClick={() => sendReply(e.id)}
+                    disabled={sending}
+                    style={{ background: '#1a2235', color: '#FFD700', border: 'none', borderRadius: 7, padding: '9px 20px', fontWeight: 700, cursor: 'pointer', fontSize: 13, opacity: sending ? 0.6 : 1 }}
+                  >
+                    {sending ? 'Sending…' : 'Send Reply'}
+                  </button>
+                  <button
+                    onClick={() => setReplyingTo(null)}
+                    style={{ background: '#eee', color: '#555', border: 'none', borderRadius: 7, padding: '9px 16px', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
