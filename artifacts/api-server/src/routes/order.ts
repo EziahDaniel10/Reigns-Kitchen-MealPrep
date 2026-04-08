@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { SquareClient, SquareEnvironment } from 'square';
 import { getResendClient } from '../lib/resend.js';
+import { db } from '@workspace/db';
+import { ordersTable, couponsTable } from '@workspace/db/schema';
+import { eq, sql } from 'drizzle-orm';
 
 const router = Router();
 
@@ -60,6 +63,8 @@ interface OrderBody {
   total: string;
   paymentToken?: string;
   totalCents?: number;
+  couponCode?: string;
+  discountAmount?: number;
 }
 
 async function chargeSquare(paymentToken: string, amountCents: number, orderNumber: string): Promise<{ success: boolean; paymentId?: string; error?: string }> {
@@ -349,6 +354,49 @@ router.post('/send-order', async (req, res) => {
       Promise.all(recipients.map(r => sendWhatsApp(r.phone, r.apikey, message))),
       sendEmails(order),
     ]);
+
+    // Persist order to database
+    try {
+      const itemsSubtotal = body.items.reduce((sum, item) => {
+        const price = Number(String(item.price).replace(/[^0-9.]/g, ''));
+        return sum + price * parseInt(String(item.qty), 10);
+      }, 0);
+      const fee = body.deliveryFee ?? 0;
+      const taxAmt = parseFloat((itemsSubtotal * 0.06).toFixed(2));
+      const discount = body.discountAmount ?? 0;
+      const grandTotal = parseFloat((itemsSubtotal + fee + taxAmt - discount).toFixed(2));
+
+      await db.insert(ordersTable).values({
+        orderNumber,
+        customerName: body.customerName,
+        customerPhone: body.customerPhone,
+        customerEmail: body.customerEmail ?? null,
+        deliveryType: body.deliveryType,
+        deliveryAddress: body.deliveryAddress ?? null,
+        deliveryDate: body.deliveryDate ?? null,
+        deliveryWindow: body.deliveryWindow ?? null,
+        allergies: body.allergies ?? null,
+        note: body.note ?? null,
+        items: body.items as any,
+        subtotal: String(itemsSubtotal.toFixed(2)),
+        deliveryFee: String(fee.toFixed(2)),
+        tax: String(taxAmt.toFixed(2)),
+        discountAmount: String(discount.toFixed(2)),
+        couponCode: body.couponCode ?? null,
+        total: String(grandTotal),
+        paymentId: paymentId ?? null,
+        status: 'confirmed',
+      });
+
+      // Increment coupon uses if applied
+      if (body.couponCode) {
+        await db.update(couponsTable)
+          .set({ uses: sql`${couponsTable.uses} + 1` })
+          .where(eq(couponsTable.code, body.couponCode.toUpperCase().trim()));
+      }
+    } catch (dbErr) {
+      console.error('Failed to save order to database:', dbErr);
+    }
 
     const allSent = whatsappResults.every(r => r === true);
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Plus, Minus, Trash2, X, ChevronLeft, CheckCircle, Loader2, AlertCircle, Lock } from 'lucide-react';
+import { ShoppingBag, Plus, Minus, Trash2, X, ChevronLeft, CheckCircle, Loader2, AlertCircle, Lock, Tag } from 'lucide-react';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
 import { useCart } from '@/store/use-cart';
@@ -192,6 +192,14 @@ function CartItems({
   );
 }
 
+interface AppliedCoupon {
+  code: string;
+  discountAmount: number;
+  description?: string | null;
+  discountType: string;
+  discountValue: number;
+}
+
 function CheckoutForm({
   onBack,
   onValidated,
@@ -199,6 +207,8 @@ function CheckoutForm({
   deliveryType,
   deliveryFee,
   tax,
+  appliedCoupon,
+  onCouponChange,
 }: {
   onBack: () => void;
   onValidated: (form: OrderForm) => void;
@@ -206,6 +216,8 @@ function CheckoutForm({
   deliveryType: 'delivery' | 'pickup';
   deliveryFee: number;
   tax: number;
+  appliedCoupon: AppliedCoupon | null;
+  onCouponChange: (c: AppliedCoupon | null) => void;
 }) {
   const { getSubtotal, getBundleProgress } = useCart();
   const { totalMeals } = getBundleProgress();
@@ -217,6 +229,39 @@ function CheckoutForm({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [form, setForm] = useState<OrderForm>(initialForm);
   const [fieldError, setFieldError] = useState('');
+  const [couponInput, setCouponInput] = useState(appliedCoupon?.code ?? '');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState('');
+
+  const handleApplyCoupon = async () => {
+    const code = couponInput.trim();
+    if (!code) return;
+    setCouponLoading(true);
+    setCouponError('');
+    try {
+      const res = await fetch('/api/validate-coupon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, subtotal }),
+      });
+      const data = await res.json();
+      if (data.success && data.coupon) {
+        onCouponChange({
+          code: data.coupon.code,
+          discountAmount: data.coupon.discountAmount,
+          description: data.coupon.description,
+          discountType: data.coupon.discountType,
+          discountValue: data.coupon.discountValue,
+        });
+        setCouponError('');
+      } else {
+        setCouponError(data.error ?? 'Invalid coupon code');
+      }
+    } catch {
+      setCouponError('Could not validate coupon. Please try again.');
+    }
+    setCouponLoading(false);
+  };
 
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
@@ -403,6 +448,40 @@ function CheckoutForm({
           </p>
         </div>
 
+        <div>
+          <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">
+            Coupon Code <span className="text-muted-foreground font-normal normal-case">(optional)</span>
+          </label>
+          {appliedCoupon ? (
+            <div className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border text-sm" style={{ background: '#f0fdf4', borderColor: '#86efac' }}>
+              <div className="flex items-center gap-2" style={{ color: '#166534' }}>
+                <Tag className="w-3.5 h-3.5 shrink-0" />
+                <span className="font-bold">{appliedCoupon.code}</span>
+                <span>— {appliedCoupon.discountType === 'percentage' ? `${appliedCoupon.discountValue}%` : `$${appliedCoupon.discountValue.toFixed(2)}`} off (−${appliedCoupon.discountAmount.toFixed(2)})</span>
+              </div>
+              <button onClick={() => { onCouponChange(null); setCouponInput(''); setCouponError(''); }} className="text-xs text-muted-foreground hover:text-destructive transition-colors cursor-pointer">Remove</button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                value={couponInput}
+                onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponError(''); }}
+                onKeyDown={async e => { if (e.key === 'Enter') { e.preventDefault(); await handleApplyCoupon(); } }}
+                placeholder="Enter code..."
+                className="flex-1 border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
+              />
+              <button
+                onClick={handleApplyCoupon}
+                disabled={!couponInput.trim() || couponLoading}
+                className="px-4 py-2.5 rounded-lg text-sm font-semibold border border-accent text-accent hover:bg-accent/10 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {couponLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
+              </button>
+            </div>
+          )}
+          {couponError && <p className="mt-1.5 text-xs text-destructive">{couponError}</p>}
+        </div>
+
         {fieldError && (
           <p className="text-xs text-destructive font-medium">{fieldError}</p>
         )}
@@ -435,6 +514,7 @@ function PaymentScreen({
   deliveryType,
   deliveryFee,
   tax,
+  appliedCoupon,
 }: {
   onBack: () => void;
   onSuccess: (orderNumber: string) => void;
@@ -443,11 +523,13 @@ function PaymentScreen({
   deliveryType: 'delivery' | 'pickup';
   deliveryFee: number;
   tax: number;
+  appliedCoupon: AppliedCoupon | null;
 }) {
   const { items, getSubtotal, getBundleProgress } = useCart();
   const { totalMeals } = getBundleProgress();
   const subtotal = getSubtotal();
-  const total = subtotal + deliveryFee + tax;
+  const discount = appliedCoupon?.discountAmount ?? 0;
+  const total = Math.max(0, subtotal + deliveryFee + tax - discount);
   const totalCents = Math.round(total * 100);
 
   const cardRef = useRef<any>(null);
@@ -547,6 +629,8 @@ function PaymentScreen({
           total: total.toFixed(2),
           paymentToken: result.token,
           totalCents,
+          couponCode: appliedCoupon?.code ?? null,
+          discountAmount: discount,
         }),
       });
 
@@ -625,6 +709,12 @@ function PaymentScreen({
             <span>Tax (6%)</span>
             <span>{formatPrice(tax)}</span>
           </div>
+          {discount > 0 && (
+            <div className="flex justify-between font-medium" style={{ color: '#16a34a' }}>
+              <span className="flex items-center gap-1"><Tag className="w-3 h-3" /> {appliedCoupon?.code}</span>
+              <span>−{formatPrice(discount)}</span>
+            </div>
+          )}
           <div className="flex justify-between font-bold text-foreground text-sm pt-1.5 border-t border-border">
             <span>Total charged today</span>
             <span>{formatPrice(total)}</span>
@@ -719,6 +809,31 @@ function ErrorScreen({ onBack }: { onBack: () => void }) {
 }
 
 function ContactModal({ onClose }: { onClose: () => void }) {
+  const [tab, setTab] = useState<'quick' | 'form'>('quick');
+  const [cf, setCf] = useState({ name: '', email: '', phone: '', message: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+
+  const handleSubmit = async () => {
+    if (!cf.name.trim() || !cf.message.trim()) { setSubmitError('Name and message are required.'); return; }
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cf),
+      });
+      const data = await res.json();
+      if (data.success) setSubmitted(true);
+      else setSubmitError(data.error ?? 'Failed to send. Please try again.');
+    } catch { setSubmitError('Network error. Please try again.'); }
+    setSubmitting(false);
+  };
+
+  const inputClass = 'w-full border border-white/20 rounded-lg px-3 py-2.5 text-sm bg-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-accent/60 transition-all';
+
   return (
     <div
       className="absolute inset-0 z-50 flex items-end justify-center"
@@ -726,47 +841,65 @@ function ContactModal({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="w-full rounded-t-2xl p-6 pb-8 space-y-3"
+        className="w-full rounded-t-2xl p-6 pb-8"
         style={{ background: '#1a2235' }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-1">
-          <h3 className="font-serif text-lg font-bold" style={{ color: '#F5F5DC' }}>
-            Contact Us
-          </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-serif text-lg font-bold" style={{ color: '#F5F5DC' }}>Contact Us</h3>
           <button onClick={onClose} className="p-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer">
             <X className="w-4 h-4" style={{ color: '#F5F5DC' }} />
           </button>
         </div>
-        <p className="text-sm pb-1" style={{ color: 'rgba(245,245,220,0.65)' }}>
-          We're happy to help. Choose how you'd like to reach us:
-        </p>
-        <a
-          href={`https://wa.me/${CONFIG.whatsappNumber}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-3 w-full px-4 py-3 rounded-xl font-semibold text-sm transition-all hover:brightness-110 cursor-pointer"
-          style={{ background: '#25D366', color: '#fff' }}
-        >
-          <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current shrink-0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.118 1.532 5.85L.054 23.454a.75.75 0 0 0 .918.919l5.683-1.49A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.694-.504-5.24-1.385l-.374-.217-3.875 1.016 1.029-3.764-.237-.389A9.955 9.955 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
-          WhatsApp
-        </a>
-        <a
-          href={`sms:${CONFIG.contactPhone}`}
-          className="flex items-center gap-3 w-full px-4 py-3 rounded-xl font-semibold text-sm transition-all hover:brightness-110 cursor-pointer"
-          style={{ background: '#3b82f6', color: '#fff' }}
-        >
-          <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current shrink-0"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>
-          Text Message
-        </a>
-        <a
-          href={`mailto:${CONFIG.contactEmail}`}
-          className="flex items-center gap-3 w-full px-4 py-3 rounded-xl font-semibold text-sm transition-all hover:brightness-110 cursor-pointer"
-          style={{ background: '#c9a84c', color: '#fff' }}
-        >
-          <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current shrink-0"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/></svg>
-          Email
-        </a>
+
+        <div className="flex gap-1 mb-4 bg-white/10 rounded-lg p-1">
+          {(['quick', 'form'] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)} className="flex-1 py-1.5 rounded-md text-sm font-semibold transition-all cursor-pointer" style={{ background: tab === t ? '#c9a84c' : 'transparent', color: tab === t ? '#1a2235' : 'rgba(245,245,220,0.7)' }}>
+              {t === 'quick' ? 'Quick Contact' : 'Send a Message'}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'quick' && (
+          <div className="space-y-3">
+            <a href={`https://wa.me/${CONFIG.whatsappNumber}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 w-full px-4 py-3 rounded-xl font-semibold text-sm transition-all hover:brightness-110 cursor-pointer" style={{ background: '#25D366', color: '#fff' }}>
+              <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current shrink-0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.118 1.532 5.85L.054 23.454a.75.75 0 0 0 .918.919l5.683-1.49A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.694-.504-5.24-1.385l-.374-.217-3.875 1.016 1.029-3.764-.237-.389A9.955 9.955 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+              WhatsApp
+            </a>
+            <a href={`sms:${CONFIG.contactPhone}`} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl font-semibold text-sm transition-all hover:brightness-110 cursor-pointer" style={{ background: '#3b82f6', color: '#fff' }}>
+              <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current shrink-0"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>
+              Text Message
+            </a>
+            <a href={`mailto:${CONFIG.contactEmail}`} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl font-semibold text-sm transition-all hover:brightness-110 cursor-pointer" style={{ background: '#c9a84c', color: '#fff' }}>
+              <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current shrink-0"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/></svg>
+              Email
+            </a>
+          </div>
+        )}
+
+        {tab === 'form' && (
+          submitted ? (
+            <div className="text-center py-6">
+              <CheckCircle className="w-10 h-10 mx-auto mb-3" style={{ color: '#4ade80' }} />
+              <p className="font-semibold text-lg" style={{ color: '#F5F5DC' }}>Message Sent!</p>
+              <p className="text-sm mt-1" style={{ color: 'rgba(245,245,220,0.65)' }}>Chef April will get back to you shortly.</p>
+              <button onClick={onClose} className="mt-4 px-6 py-2 rounded-lg text-sm font-semibold cursor-pointer" style={{ background: '#c9a84c', color: '#1a2235' }}>Close</button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <input className={inputClass} placeholder="Your name *" value={cf.name} onChange={e => setCf(f => ({ ...f, name: e.target.value }))} />
+              <div className="grid grid-cols-2 gap-2">
+                <input className={inputClass} placeholder="Email" value={cf.email} onChange={e => setCf(f => ({ ...f, email: e.target.value }))} />
+                <input className={inputClass} placeholder="Phone" value={cf.phone} onChange={e => setCf(f => ({ ...f, phone: e.target.value }))} />
+              </div>
+              <textarea className={inputClass} placeholder="Your message *" rows={3} value={cf.message} onChange={e => setCf(f => ({ ...f, message: e.target.value }))} style={{ resize: 'none' }} />
+              {submitError && <p className="text-xs" style={{ color: '#fca5a5' }}>{submitError}</p>}
+              <button onClick={handleSubmit} disabled={submitting} className="w-full py-3 rounded-lg text-sm font-bold cursor-pointer disabled:opacity-50 transition-all hover:brightness-110" style={{ background: '#c9a84c', color: '#1a2235' }}>
+                {submitting ? 'Sending…' : 'Send Message'}
+              </button>
+            </div>
+          )
+        )}
       </div>
     </div>
   );
@@ -778,6 +911,7 @@ function CartPanel({ onClose }: { onClose?: () => void }) {
   const [formData, setFormData] = useState<OrderForm>(EMPTY_FORM);
   const [showContact, setShowContact] = useState(false);
   const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
   const { getBundleProgress, getSubtotal } = useCart();
   const { isMinMet } = getBundleProgress();
   const subtotal = getSubtotal();
@@ -824,6 +958,8 @@ function CartPanel({ onClose }: { onClose?: () => void }) {
           deliveryType={deliveryType}
           deliveryFee={deliveryFee}
           tax={tax}
+          appliedCoupon={appliedCoupon}
+          onCouponChange={setAppliedCoupon}
         />
       )}
       {screen === 'payment' && (
@@ -835,6 +971,7 @@ function CartPanel({ onClose }: { onClose?: () => void }) {
           deliveryType={deliveryType}
           deliveryFee={deliveryFee}
           tax={tax}
+          appliedCoupon={appliedCoupon}
         />
       )}
       {screen === 'success' && (
