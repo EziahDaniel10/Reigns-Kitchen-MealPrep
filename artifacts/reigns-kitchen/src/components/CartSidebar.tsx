@@ -802,12 +802,6 @@ function PaymentScreen({
         <p className="text-center text-xs text-muted-foreground mt-2">
           Secure · Encrypted · Powered by Square
         </p>
-        <button
-          onClick={() => onSuccess('RK-PREVIEW-001')}
-          className="w-full mt-3 py-1.5 rounded text-xs text-muted-foreground border border-dashed border-border hover:border-accent hover:text-accent transition-all cursor-pointer"
-        >
-          👁 Preview confirmation screen (demo only)
-        </button>
       </div>
     </>
   );
