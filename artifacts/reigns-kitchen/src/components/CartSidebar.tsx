@@ -10,7 +10,6 @@ import { CONFIG } from '@/data/menu';
 
 type Screen = 'cart' | 'checkout' | 'payment' | 'success' | 'error';
 
-const DELIVERY_FEE = 12;
 const TAX_RATE = 0.06;
 
 function getMinDeliveryFriday(): Date {
@@ -155,7 +154,7 @@ function CartItems({
             onClick={() => setDeliveryType('delivery')}
             className={`flex-1 py-2 text-xs font-semibold transition-colors cursor-pointer ${deliveryType === 'delivery' ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:bg-muted'}`}
           >
-            🚗 Delivery — $12
+            🚗 Delivery
           </button>
           <button
             onClick={() => setDeliveryType('pickup')}
@@ -172,15 +171,17 @@ function CartItems({
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">{deliveryType === 'delivery' ? 'Delivery fee' : 'Pickup'}</span>
-            <span className="text-foreground">{deliveryFee > 0 ? formatPrice(deliveryFee) : 'Free'}</span>
+            <span className="text-foreground">
+              {deliveryType === 'pickup' ? 'Free' : 'By distance'}
+            </span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Tax (6%)</span>
             <span className="text-foreground">{formatPrice(tax)}</span>
           </div>
           <div className="flex justify-between pt-1.5 border-t border-border">
-            <span className="font-semibold text-foreground">Total</span>
-            <span className="text-xl font-bold text-foreground">{formatPrice(subtotal + deliveryFee + tax)}</span>
+            <span className="font-semibold text-foreground">Subtotal + Tax</span>
+            <span className="text-xl font-bold text-foreground">{formatPrice(subtotal + tax)}</span>
           </div>
         </div>
         {!isMinMet && totalMeals > 0 && (
@@ -212,7 +213,7 @@ function CheckoutForm({
   onCouponChange,
 }: {
   onBack: () => void;
-  onValidated: (form: OrderForm) => void;
+  onValidated: (form: OrderForm, fee: number) => void;
   initialForm: OrderForm;
   deliveryType: 'delivery' | 'pickup';
   deliveryFee: number;
@@ -223,6 +224,7 @@ function CheckoutForm({
   const { getSubtotal, getBundleProgress } = useCart();
   const { totalMeals } = getBundleProgress();
   const subtotal = getSubtotal();
+  const { openContact } = useUI();
 
   const minFriday = getMinDeliveryFriday();
   const isCutoffDay = new Date().getDay() === 5;
@@ -230,6 +232,8 @@ function CheckoutForm({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [form, setForm] = useState<OrderForm>(initialForm);
   const [fieldError, setFieldError] = useState('');
+  const [checkingAddress, setCheckingAddress] = useState(false);
+  const [outOfRange, setOutOfRange] = useState(false);
   const [couponInput, setCouponInput] = useState(appliedCoupon?.code ?? '');
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState('');
@@ -276,7 +280,7 @@ function CheckoutForm({
     }
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!form.customerName.trim()) { setFieldError('Please enter your name.'); return; }
     if (!form.customerPhone.trim()) { setFieldError('Please enter your phone number.'); return; }
     if (deliveryType === 'delivery') {
@@ -286,7 +290,30 @@ function CheckoutForm({
     }
     if (!form.customerEmail.trim()) { setFieldError('Please enter your email address.'); return; }
     setFieldError('');
-    onValidated(form);
+    setOutOfRange(false);
+
+    if (deliveryType === 'delivery') {
+      setCheckingAddress(true);
+      try {
+        const res = await fetch(`/api/delivery-fee?address=${encodeURIComponent(form.deliveryAddress)}`);
+        const data = await res.json();
+        setCheckingAddress(false);
+        if (!data.success) {
+          setFieldError(data.error ?? 'Could not verify your address. Please check it and try again.');
+          return;
+        }
+        if (data.outOfRange) {
+          setOutOfRange(true);
+          return;
+        }
+        onValidated(form, data.fee);
+      } catch {
+        setCheckingAddress(false);
+        setFieldError('Could not verify your address. Please check your connection and try again.');
+      }
+    } else {
+      onValidated(form, 0);
+    }
   };
 
   return (
@@ -303,10 +330,10 @@ function CheckoutForm({
           <span className="text-muted-foreground">
             {totalMeals} meals · {deliveryType === 'delivery' ? 'Delivery' : 'Pickup'}
           </span>
-          <span className="font-bold text-foreground">{formatPrice(subtotal + deliveryFee + tax)}</span>
+          <span className="font-bold text-foreground">{formatPrice(subtotal + tax)}</span>
         </div>
         <p className="text-xs text-muted-foreground">
-          {deliveryType === 'delivery' ? 'Incl. $12 delivery + 6% tax' : 'Incl. 6% tax · free pickup'}
+          {deliveryType === 'delivery' ? 'Delivery fee calculated by distance + 6% tax' : 'Incl. 6% tax · free pickup'}
         </p>
       </div>
 
@@ -486,15 +513,40 @@ function CheckoutForm({
         {fieldError && (
           <p className="text-xs text-destructive font-medium">{fieldError}</p>
         )}
+
+        {outOfRange && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm">
+            <p className="font-semibold text-amber-800 mb-1">Outside our standard delivery area</p>
+            <p className="text-amber-700 text-xs leading-relaxed mb-2">
+              Your address is more than 15 miles away. Please contact us for a custom delivery quote.
+            </p>
+            <button
+              onClick={() => openContact('form')}
+              className="text-xs font-semibold underline underline-offset-2 text-amber-800 hover:opacity-80 cursor-pointer"
+            >
+              Contact us for a quote →
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="p-5 border-t border-border bg-card shrink-0">
         <button
           onClick={handleContinue}
-          className="w-full py-3 rounded-lg font-bold bg-accent text-accent-foreground hover:brightness-110 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          disabled={checkingAddress}
+          className="w-full py-3 rounded-lg font-bold bg-accent text-accent-foreground hover:brightness-110 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          <Lock className="w-4 h-4" />
-          Continue to Payment
+          {checkingAddress ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Checking your address…
+            </>
+          ) : (
+            <>
+              <Lock className="w-4 h-4" />
+              Continue to Payment
+            </>
+          )}
         </button>
         <p className="text-center text-xs text-muted-foreground mt-2">
           {CONFIG.orderDeadline}
@@ -911,13 +963,18 @@ function CartPanel({ onClose }: { onClose?: () => void }) {
   const [orderNumber, setOrderNumber] = useState('');
   const [formData, setFormData] = useState<OrderForm>(EMPTY_FORM);
   const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
+  const [deliveryFee, setDeliveryFee] = useState(0);
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
   const { contactOpen, contactDefaultTab, openContact, closeContact } = useUI();
   const { getBundleProgress, getSubtotal } = useCart();
   const { isMinMet } = getBundleProgress();
   const subtotal = getSubtotal();
-  const deliveryFee = deliveryType === 'delivery' ? DELIVERY_FEE : 0;
   const tax = parseFloat((subtotal * TAX_RATE).toFixed(2));
+
+  const handleDeliveryTypeChange = (type: 'delivery' | 'pickup') => {
+    setDeliveryType(type);
+    setDeliveryFee(0);
+  };
 
   return (
     <div className="flex flex-col h-full bg-card relative">
@@ -926,7 +983,7 @@ function CartPanel({ onClose }: { onClose?: () => void }) {
           <CartItems
             onClose={onClose}
             deliveryType={deliveryType}
-            setDeliveryType={setDeliveryType}
+            setDeliveryType={handleDeliveryTypeChange}
             deliveryFee={deliveryFee}
             tax={tax}
           />
@@ -954,7 +1011,7 @@ function CartPanel({ onClose }: { onClose?: () => void }) {
       {screen === 'checkout' && (
         <CheckoutForm
           onBack={() => setScreen('cart')}
-          onValidated={(form) => { setFormData(form); setScreen('payment'); }}
+          onValidated={(form, fee) => { setFormData(form); setDeliveryFee(fee); setScreen('payment'); }}
           initialForm={formData}
           deliveryType={deliveryType}
           deliveryFee={deliveryFee}
