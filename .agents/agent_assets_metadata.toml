@@ -1,0 +1,9 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "fHGe7YuY1-AZ44mo9iV4_"
+uri = "file://DEVELOPER_DOCS.md"
+type = "text"
+title = "Reigns Kitchen — Developer Documentation"
+description = "Full technical documentation covering architecture, database schema, all API routes, frontend components, business logic, notifications, admin panel, auth roles, and customisation guide."
